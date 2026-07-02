@@ -1,0 +1,10 @@
+{
+  "seed": 1,
+  "kb_rand_0_99": [83,86,77,15,93,35,86,92,49,21,62,27,90,59,63,26,40,26,72,36],
+  "classes": [
+    {"class":0,"gold":7500,"base_leadership":100,"leadership":100,"commission":1000,"troops":[2,8,255,255,255],"numbers":[20,2,0,0,0]},
+    {"class":1,"gold":10000,"base_leadership":80,"leadership":80,"commission":1000,"troops":[0,2,255,255,255],"numbers":[20,20,0,0,0]},
+    {"class":2,"gold":10000,"base_leadership":60,"leadership":60,"commission":3000,"troops":[0,1,255,255,255],"numbers":[30,10,0,0,0]},
+    {"class":3,"gold":7500,"base_leadership":100,"leadership":100,"commission":2000,"troops":[3,255,255,255,255],"numbers":[20,0,0,0,0]}
+  ]
+}

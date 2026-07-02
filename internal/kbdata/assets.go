@@ -9,6 +9,8 @@
 // 這些純資料表由 P1 的移植工作(subagent)填入 tables_troops.go 等檔。
 package kbdata
 
+import "path/filepath"
+
 // Dwelling 是兵種棲地(對應 C 版 DWELLING_*)。
 type Dwelling uint8
 
@@ -55,29 +57,50 @@ type Troop struct {
 	MoraleGroup int      // 士氣群 _A.._E
 }
 
-// Class 是角色職業(對應 C 版 KBclass,classes[4][4]:四職業 × 四難度)。
-// 具體欄位由 P1 移植時對照 src/bounty.h 的 KBclass 定義補齊。
+// Class 是角色職業某一階(對應 C 版 KBclass,classes[4][4]:四職業 × 四階)。
+// 欄位與 src/bounty.h 的 KBclass 對齊。C 版部分欄位以「逐階增量」寫,這裡一律存累積後的絕對值。
 type Class struct {
-	Name       string
-	Leadership int
-	Commission int
-	MaxSpell   int
-	SpellPower int
-	// TODO(P1): 依 src/bounty.h KBclass 補齊其餘欄位(移植 subagent 負責)。
+	Name           string // 該階頭銜(武士/將軍/元帥/領主…)
+	VillainsNeeded int    // 晉此階所需擊敗的惡棍數(絕對門檻)
+	Leadership     int    // 領導力(累積)
+	MaxSpell       int    // 法術上限(累積)
+	SpellPower     int    // 法術威力(累積)
+	Commission     int    // 每週俸祿(累積)
+	KnowsMagic     int    // 是否天生會魔法(C: knows_magic;僅女巫師起手為 1)
+	InstantArmy    int    // 起手即戰兵種旗標(C: instant_army,絕對值)
 }
 
 // Assets 是載入後的一整包唯讀遊戲資料。render/gamestate 只讀不寫。
 type Assets struct {
-	Troops  []Troop     // 由 tables_troops.go 提供(移植自 bounty.c)
-	Classes [4][4]Class // 由 tables_classes.go 提供
-	// TODO(P1): Font(cjk24 atlas)、Tiles、Map、Strings(free ini)等由各 loader 填入。
+	Troops  []Troop             // 由 tables_troops.go 提供(移植自 bounty.c)
+	Classes [4][4]Class         // 由 tables_classes.go 提供
+	Font    *CJKAtlas           // cjk24.bin 點陣字(nil = 未載入)
+	Strings map[string]*FreeIni // free *.ini,key 為檔名去副檔名(troops/spells/…)
+	// TODO(P2+): Tiles、Map(land.org)由各 loader 填入。
 }
 
+// freeIniNames 是 Load 會嘗試載入的 free 資料清單(缺檔不致命)。
+var freeIniNames = []string{"troops", "spells", "towns", "villains", "artifacts", "ui", "colors", "castles"}
+
 // Load 讀取 dir 下的遊戲資料並回傳 *Assets。
-// P0 僅回傳嵌入的靜態表(Troops/Classes);檔案型 loader(ini/atlas/map)P1 接上。
+// 靜態表(Troops/Classes)恆嵌入;檔案型資料(cjk 字、free ini)採 best-effort:
+// 缺檔不報錯(dir=="" 或部分檔缺時仍回傳可用 Assets),讓純邏輯測試免帶資料檔。
 func Load(dir string) (*Assets, error) {
-	return &Assets{
+	a := &Assets{
 		Troops:  troopTable(),
 		Classes: classTable(),
-	}, nil
+		Strings: make(map[string]*FreeIni),
+	}
+	if dir == "" {
+		return a, nil
+	}
+	if atlas, err := LoadCJKAtlas(filepath.Join(dir, "cjk24.bin")); err == nil {
+		a.Font = atlas
+	}
+	for _, name := range freeIniNames {
+		if ini, err := LoadFreeIni(filepath.Join(dir, "free", name+".ini")); err == nil {
+			a.Strings[name] = ini
+		}
+	}
+	return a, nil
 }
