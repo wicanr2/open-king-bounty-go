@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # 純邏輯層:無 GL/無 cgo,快速跑全測(kbrng parity、資料表、gamestate…)
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: go vet (logic packages)
+        run: go vet ./internal/...
+      - name: go test (logic packages)
+        run: go test ./internal/...
+
+  # 桌面:Ebiten 需 X11/GL 開發標頭 + cgo,驗 cmd/openkb 編得起來
+  build-desktop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: install GL/X11 headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libxrandr-dev libxcursor-dev \
+            libxinerama-dev libxi-dev libxxf86vm-dev libasound2-dev
+      - name: build desktop
+        run: go build ./cmd/openkb
+
+  # 手機:ebitenmobile bind 出 Android AAR 的 smoke(Android-only,依使用者需求)
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+      - name: install ebitenmobile
+        run: go install github.com/hajimehoshi/ebiten/v2/cmd/ebitenmobile@latest
+      - name: bind android aar (smoke)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          ebitenmobile bind -target android -javapkg com.wicanr2.openkb \
+            -o openkb.aar ./mobile

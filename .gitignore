@@ -1,0 +1,21 @@
+# Go
+/bin/
+*.exe
+*.aar
+*.apk
+*.ipa
+*.framework/
+
+# 版權資產(同 openkb-cht 政策:free 公開;原版美術/ROM/音樂只給正版擁有者,不入公開 repo)
+/assets/dos/
+/assets/genesis/
+/assets/amiga/
+/assets/fmtowns/
+*.CC
+*.ROM
+*.rom
+
+# 黃金樣本/暫存
+/testdata/oracle/*.raw
+/dist/
+/.scratch/
