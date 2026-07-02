@@ -112,6 +112,7 @@ func TestClassKnight(t *testing.T) {
 }
 
 // TestClassSorceressLast 驗證第 2 行 3 列(女巫師系大法師)與 C 版對齊。
+// 值為 bounty.c 字面**逐階增量**(非累積絕對值);累加語意由 gamestate.acceptRank 負責。
 func TestClassSorceressLast(t *testing.T) {
 	classes := classTable()
 	archMage := classes[2][3]
@@ -122,10 +123,10 @@ func TestClassSorceressLast(t *testing.T) {
 		want  interface{}
 	}{
 		{"Name", archMage.Name, "大法師"},
-		{"Leadership", archMage.Leadership, 600},
-		{"Commission", archMage.Commission, 6000},
-		{"MaxSpell", archMage.MaxSpell, 35},
-		{"SpellPower", archMage.SpellPower, 15},
+		{"Leadership", archMage.Leadership, 300}, // C 增量 +300(累積後 600)
+		{"Commission", archMage.Commission, 1000}, // C 增量 +1000(累積後 6000)
+		{"MaxSpell", archMage.MaxSpell, 12},       // C 增量 +12(累積後 35)
+		{"SpellPower", archMage.SpellPower, 5},     // C 增量 +5(累積後 15)
 	}
 
 	for _, tt := range tests {

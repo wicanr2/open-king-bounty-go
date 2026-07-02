@@ -1,8 +1,8 @@
 package gamestate
 
-// GameState 對應 C 版 src/bounty.h 的 KBgame struct。本檔只涵蓋「建角起手狀態」
-// 這條垂直切片,不含世界生成(惡棍/巢穴/寶物佈置等需要 RNG 的部分,那些在 C 版
-// spawn_game 內但不屬於本切片範圍)。
+// GameState 對應 C 版 src/bounty.h 的 KBgame struct。目前涵蓋玩家角色狀態與規則
+// (建角、升階、寶箱領導力、招兵、每週結算的玩家面);地圖/惡棍/城堡等世界狀態尚未納入,
+// end_week 的世界成長(巢穴/城堡/foe 增兵)因此暫緩(見 week.go TODO)。
 
 // Squad 是玩家隊伍裡的一格兵(對應 C 版 KBgame.player_troops[i] / player_numbers[i]
 // 這一組 parallel array 的其中一格)。TroopID == 255(0xFF)代表空格。
@@ -30,4 +30,6 @@ type GameState struct {
 	KnowsMagic bool // 是否天生會魔法(C: byte knows_magic;僅女巫師起手為 1/true)
 
 	Army [5]Squad // 隊伍五格(C: player_troops[5] + player_numbers[5] 兩個 parallel array 合併)
+
+	Week int // 已過週數;end_week 每次遞增,用於「每 4 週補農夫」判定(C: week_id = passed_days/WEEK_DAYS)
 }

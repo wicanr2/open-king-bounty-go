@@ -58,16 +58,21 @@ type Troop struct {
 }
 
 // Class 是角色職業某一階(對應 C 版 KBclass,classes[4][4]:四職業 × 四階)。
-// 欄位與 src/bounty.h 的 KBclass 對齊。C 版部分欄位以「逐階增量」寫,這裡一律存累積後的絕對值。
+// 欄位與 src/bounty.h 的 KBclass 對齊,值為 bounty.c 字面值(C 為真值,不做累積轉換)。
+//
+// ⚠ 混合語意(見 tables_classes.go 與 C player_accept_rank):
+//   - Leadership/MaxSpell/SpellPower/Commission/KnowsMagic 是**逐階增量**,
+//     由 gamestate.acceptRank 用 += 累加(讓 base_leadership 能疊加升階+寶箱等多來源)。
+//   - VillainsNeeded/InstantArmy 是**該階絕對值**,直接查用、不累加。
 type Class struct {
 	Name           string // 該階頭銜(武士/將軍/元帥/領主…)
 	VillainsNeeded int    // 晉此階所需擊敗的惡棍數(絕對門檻)
-	Leadership     int    // 領導力(累積)
-	MaxSpell       int    // 法術上限(累積)
-	SpellPower     int    // 法術威力(累積)
-	Commission     int    // 每週俸祿(累積)
-	KnowsMagic     int    // 是否天生會魔法(C: knows_magic;僅女巫師起手為 1)
-	InstantArmy    int    // 起手即戰兵種旗標(C: instant_army,絕對值)
+	Leadership     int    // 領導力增量(逐階,acceptRank 累加)
+	MaxSpell       int    // 法術上限增量(逐階)
+	SpellPower     int    // 法術威力增量(逐階)
+	Commission     int    // 每週俸祿增量(逐階)
+	KnowsMagic     int    // 會魔法增量(逐階;僅女巫師 rank0 為 1,累加後恆 1)
+	InstantArmy    int    // 起手即戰兵種旗標(絕對值)
 }
 
 // Assets 是載入後的一整包唯讀遊戲資料。render/gamestate 只讀不寫。
