@@ -76,6 +76,11 @@ type Assets struct {
 	Classes [4][4]Class         // 由 tables_classes.go 提供
 	Font    *CJKAtlas           // cjk24.bin 點陣字(nil = 未載入)
 	Strings map[string]*FreeIni // free *.ini,key 為檔名去副檔名(troops/spells/…)
+
+	// 起手資源(索引 = 職業),移植自 bounty.c;供 gamestate 建角使用。
+	StartGold      [4]int    // 各職業起手金
+	StartArmyTroop [4][2]int // 各職業起手兩格兵種 id(0xFF = 空)
+	StartArmyCount [4][2]int // 對應數量
 	// TODO(P2+): Tiles、Map(land.org)由各 loader 填入。
 }
 
@@ -87,9 +92,12 @@ var freeIniNames = []string{"troops", "spells", "towns", "villains", "artifacts"
 // 缺檔不報錯(dir=="" 或部分檔缺時仍回傳可用 Assets),讓純邏輯測試免帶資料檔。
 func Load(dir string) (*Assets, error) {
 	a := &Assets{
-		Troops:  troopTable(),
-		Classes: classTable(),
-		Strings: make(map[string]*FreeIni),
+		Troops:         troopTable(),
+		Classes:        classTable(),
+		Strings:        make(map[string]*FreeIni),
+		StartGold:      startGold,
+		StartArmyTroop: startArmyTroop,
+		StartArmyCount: startArmyCount,
 	}
 	if dir == "" {
 		return a, nil
