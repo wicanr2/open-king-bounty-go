@@ -59,19 +59,19 @@ func TestTroopsIni_SectionCountAndFields(t *testing.T) {
 	}
 }
 
-func TestSpellsIni_DuplicateKeyLastWins(t *testing.T) {
-	// spells.ini [spell6] 有兩個 "gold" key(250 然後 2000)。已知 C 版
-	// GNU_extract_ini 的全域計數器 bug 會導致 spell13 的 gold 被跳過讀成 0
-	// (見 free_ini.go 檔頭大註解)。本 Go parser 刻意採用「後者覆寫前者、
-	// 依 section 名稱索引」的標準語意,兩者都要能正確讀到。
+func TestSpellsIni_ShippedValues(t *testing.T) {
+	// testdata/spells.ini 已同步到修正版(移除 [spell6] 那行 stray "gold = 2000"),
+	// 與 openkb-cht 出貨資料一致:超渡術(spell6)= 250、增控術(spell13)= 500。
+	// (上游 GNU_extract_ini 的全域計數器 + 重複 key 會讓 spell13 讀成 0,見 free_ini.go
+	//  檔頭;本 Go parser 依 section 索引,不重現該 bug。last-wins 性質另由合成測試涵蓋。)
 	ini := loadTestIni(t, "spells.ini")
 
 	spell6, ok := ini.NumberedSection("spell", 6)
 	if !ok {
 		t.Fatalf("expected [spell6] section")
 	}
-	if v, ok := spell6.Int("gold"); !ok || v != 2000 {
-		t.Errorf("spell6 gold = %v (ok=%v), want 2000 (later line should win)", v, ok)
+	if v, ok := spell6.Int("gold"); !ok || v != 250 {
+		t.Errorf("spell6 gold = %v (ok=%v), want 250", v, ok)
 	}
 	if v, ok := spell6.Int("damage"); !ok || v != 50 {
 		t.Errorf("spell6 damage = %v (ok=%v), want 50", v, ok)
@@ -97,6 +97,19 @@ func TestSpellsIni_DuplicateKeyLastWins(t *testing.T) {
 	}
 	if goldSlice[13] != 500 {
 		t.Errorf("IntSlice gold[13] = %d, want 500", goldSlice[13])
+	}
+}
+
+// TestParseFreeIni_DuplicateKeyLastWins 用合成輸入涵蓋「同 section 內重複 key 後者覆寫」
+// 的 parser 性質(獨立於出貨資料,不再綁 spells.ini 的 stray 行)。
+func TestParseFreeIni_DuplicateKeyLastWins(t *testing.T) {
+	ini := ParseFreeIni([]byte("[x]\ngold = 250\ngold = 2000\n"))
+	sec, ok := ini.Section("x")
+	if !ok {
+		t.Fatal("expected [x]")
+	}
+	if v, ok := sec.Int("gold"); !ok || v != 2000 {
+		t.Errorf("重複 key 應後者覆寫: got %v, want 2000", v)
 	}
 }
 
