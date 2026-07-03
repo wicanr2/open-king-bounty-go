@@ -48,6 +48,11 @@ func init() {
 		} else {
 			log.Printf("load coins: %v", err)
 		}
+		if art, err := render.LoadPNGTileFS(embedded.FS(), "free/select-0.png"); err == nil {
+			screen.SetSelectArt(art)
+		} else {
+			log.Printf("load select art: %v", err)
+		}
 	}
 
 	// SetGame 讓 ebitenmobile 生成的 Java/Kotlin 綁定驅動這顆遊戲迴圈。

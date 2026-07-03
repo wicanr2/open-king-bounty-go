@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"image"
 	_ "image/png" // 註冊 PNG decoder 給 image.Decode 用
+	"io/fs"
 	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -26,6 +27,16 @@ func LoadPNGTile(path string) (*ebiten.Image, error) {
 		return nil, fmt.Errorf("render: LoadPNGTile decode %s: %w", path, err)
 	}
 	return ebiten.NewImageFromImage(img), nil
+}
+
+// LoadPNGTileNamed 是 LoadPNGTile 的便利版,自動組 dir/free/name(比照 LoadSprite 慣例)。
+func LoadPNGTileNamed(dir, name string) (*ebiten.Image, error) {
+	return LoadPNGTile(dir + "/free/" + name)
+}
+
+// LoadPNGTileFS 是 LoadPNGTile 的 embed.FS 版本(行動裝置用),name 需含 "free/" 前綴。
+func LoadPNGTileFS(fsys fs.FS, name string) (*ebiten.Image, error) {
+	return loadPNGFromFS(fsys, name)
 }
 
 // DrawTile 把 tile 原尺寸畫到 dst 的 (x, y) 左上角,不縮放。

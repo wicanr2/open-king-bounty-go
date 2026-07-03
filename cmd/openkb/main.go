@@ -20,6 +20,7 @@ var (
 	datadir     = flag.String("datadir", defaultDataDir, "遊戲資料目錄(cjk24.bin / free/*.ini / free/*.png)")
 	startClass  = flag.Int("startclass", -1, "debug:>=0 直接以該職業建角進世界地圖(截圖驗證用)")
 	startCombat = flag.Bool("startcombat", false, "debug:直接切入一場戰鬥(截圖驗證用)")
+	startSelect = flag.Bool("startselect", false, "debug:直接進選角畫面(截圖驗證用)")
 )
 
 func rootScreen(a *kbdata.Assets) screen.Screen {
@@ -30,6 +31,9 @@ func rootScreen(a *kbdata.Assets) screen.Screen {
 	if *startClass >= 0 && *startClass < 4 {
 		gs := gamestate.NewGame(a, "Sir Loin", *startClass)
 		return screen.NewWorldMapScreen(gs, a)
+	}
+	if *startSelect {
+		return screen.NewCharSelectScreen(a)
 	}
 	return screen.NewTitleScreen(a)
 }
@@ -60,6 +64,11 @@ func main() {
 		screen.SetCoins(coins)
 	} else {
 		log.Printf("load coins: %v", err)
+	}
+	if art, err := render.LoadPNGTileNamed(*datadir, "select-0.png"); err == nil {
+		screen.SetSelectArt(art)
+	} else {
+		log.Printf("load select art: %v", err)
 	}
 
 	ebiten.SetWindowSize(app.LogicalW*3, app.LogicalH*3)

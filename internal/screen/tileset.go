@@ -1,6 +1,10 @@
 package screen
 
-import "github.com/wicanr2/open-king-bounty-go/internal/render"
+import (
+	"github.com/hajimehoshi/ebiten/v2"
+
+	"github.com/wicanr2/open-king-bounty-go/internal/render"
+)
 
 // worldTileset 是全域載入一次的世界地圖 tileset(cmd 啟動時 SetTileset 設入)。
 // 為 nil 時 WorldMapScreen 退回色塊繪製(讓無資產的測試/環境仍可運作)。
@@ -26,3 +30,10 @@ var coinsSprite *render.Sprite
 
 // SetCoins 由進入點在載入資產後設定金幣 sprite。
 func SetCoins(s *render.Sprite) { coinsSprite = s }
+
+// selectArt 是選角畫面的整張背景美術(select-0.png,288×184,不透明,已內建
+// A/B/C/D 立繪標籤,對齊 C 版 GR_SELECT 幀 0)。
+var selectArt *ebiten.Image
+
+// SetSelectArt 由進入點在載入資產後設定選角背景圖。
+func SetSelectArt(img *ebiten.Image) { selectArt = img }
