@@ -32,17 +32,47 @@ var (
 
 // Game 把 Ebiten 迴圈接到 screen.Manager。
 type Game struct {
-	mgr *screen.Manager
+	mgr    *screen.Manager
+	assets *kbdata.Assets
 }
 
 func (g *Game) Update() error {
+	// 鍵盤優先;無鍵盤事件才看觸控/滑鼠(讀當前畫面 Keymap 命中觸控控制)。
 	if a := pollAction(); !a.IsNone() {
 		g.mgr.Update(a)
+		return nil
+	}
+	if tx, ty, ok := pollTap(); ok {
+		layout := input.NewTouchLayout(g.mgr.Keymap())
+		if a := layout.Resolve(input.Tap{X: tx, Y: ty}); !a.IsNone() {
+			g.mgr.Update(a)
+		}
 	}
 	return nil
 }
 
-func (g *Game) Draw(dst *ebiten.Image) { g.mgr.Draw(dst) }
+func (g *Game) Draw(dst *ebiten.Image) {
+	g.mgr.Draw(dst)
+	// 觸控疊層:照當前畫面 Keymap 浮出控制(桌面滑鼠亦可點,先驗)。
+	var font *kbdata.CJKAtlas
+	if g.assets != nil {
+		font = g.assets.Font
+	}
+	render.DrawTouchControls(dst, input.NewTouchLayout(g.mgr.Keymap()).Controls(), font)
+}
+
+// pollTap 回傳本幀剛按下的觸控/滑鼠點(邏輯座標)。手機用觸控,桌面用滑鼠左鍵。
+func pollTap() (int, int, bool) {
+	if ids := inpututil.AppendJustPressedTouchIDs(nil); len(ids) > 0 {
+		x, y := ebiten.TouchPosition(ids[0])
+		return x, y, true
+	}
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		x, y := ebiten.CursorPosition()
+		return x, y, true
+	}
+	return 0, 0, false
+}
 
 func (g *Game) Layout(outsideW, outsideH int) (int, int) { return logicalW, logicalH }
 
@@ -111,7 +141,7 @@ func main() {
 		log.Printf("load tileset: %v(地圖退回色塊)", err)
 	}
 
-	g := &Game{mgr: screen.NewManager(rootScreen(assets))}
+	g := &Game{mgr: screen.NewManager(rootScreen(assets)), assets: assets}
 
 	ebiten.SetWindowSize(logicalW*3, logicalH*3)
 	ebiten.SetWindowTitle("御封戰將 (openkb-go)")
