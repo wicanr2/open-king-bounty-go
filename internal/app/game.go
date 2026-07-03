@@ -3,8 +3,6 @@
 package app
 
 import (
-	"image/color"
-
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
@@ -57,7 +55,6 @@ func (g *Game) Draw(dst *ebiten.Image) {
 			g.boot() // JVM/繪圖已就緒,此時建 ebiten.Image 安全
 		}
 	}
-	dst.Fill(color.RGBA{18, 18, 32, 255}) // 深藍底:非全黑,亦供行動裝置縮放診斷
 	g.mgr.Draw(dst)
 	var font *kbdata.CJKAtlas
 	if g.assets != nil {
@@ -66,7 +63,15 @@ func (g *Game) Draw(dst *ebiten.Image) {
 	render.DrawTouchControls(dst, input.NewTouchLayout(g.mgr.Keymap()).Controls(), font)
 }
 
-func (g *Game) Layout(outsideW, outsideH int) (int, int) { return LogicalW, LogicalH }
+func (g *Game) Layout(outsideW, outsideH int) (int, int) {
+	return LogicalW, LogicalH
+}
+
+// LayoutF 是 ebiten 2.8+ 的浮點版 Layout(LayoutFer 介面)。行動裝置走高 DPI 浮點路徑,
+// 只實作 int Layout 會被塞進垃圾尺寸(MinInt64)→ viewport 無效 → 全黑。實作此法即修正。
+func (g *Game) LayoutF(outsideWidth, outsideHeight float64) (float64, float64) {
+	return LogicalW, LogicalH
+}
 
 // pollAction 把「本幀剛按下」的按鍵轉成單一 input.Action(中性 Key → Action)。
 func pollAction() input.Action {
