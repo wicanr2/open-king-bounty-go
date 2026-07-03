@@ -12,6 +12,7 @@ import (
 	"github.com/wicanr2/open-king-bounty-go/internal/gamestate"
 	"github.com/wicanr2/open-king-bounty-go/internal/input"
 	"github.com/wicanr2/open-king-bounty-go/internal/kbdata"
+	"github.com/wicanr2/open-king-bounty-go/internal/render"
 	"github.com/wicanr2/open-king-bounty-go/internal/screen"
 )
 
@@ -102,6 +103,12 @@ func main() {
 	assets, err := kbdata.Load(*datadir)
 	if err != nil {
 		log.Printf("load assets: %v(以空資料續行)", err)
+	}
+	// 世界地圖 tileset(缺檔則 worldmap 退回色塊繪製)。
+	if ts, err := render.LoadTileset(*datadir); err == nil {
+		screen.SetTileset(ts)
+	} else {
+		log.Printf("load tileset: %v(地圖退回色塊)", err)
 	}
 
 	g := &Game{mgr: screen.NewManager(rootScreen(assets))}

@@ -32,9 +32,10 @@ func placeholderFoe() [combat.MaxUnits]gamestate.Squad {
 }
 
 const (
-	tileSize = 10 // 每格像素(P2 暫用色塊,tileset 美術之後接)
-	viewCols = 320 / tileSize
-	viewRows = 200 / tileSize
+	mapTileW = 48 // 原生 tileset tile 尺寸(free TILE_W/H)
+	mapTileH = 34
+	viewCols = 320/mapTileW + 1 // 涵蓋 320 寬所需欄數(含邊緣部分格)
+	viewRows = 200/mapTileH + 1
 )
 
 // WorldMapScreen 是世界地圖:顯示 land.org 的 tile(暫以色塊分類)、玩家可走動、踩城鎮進城。
@@ -225,13 +226,23 @@ func (s *WorldMapScreen) Draw(dst *ebiten.Image) {
 				continue
 			}
 			tile := s.assets.World.Tile(s.cont, tx, ty)
-			vector.DrawFilledRect(dst, float32(col*tileSize), float32(row*tileSize),
-				tileSize, tileSize, tileColor(tile), false)
+			px, py := col*mapTileW, row*mapTileH
+			if worldTileset != nil {
+				// 地形用真 tile 圖;互動物件(byte>71,不在 tileset)先鋪 grass 再疊色標記
+				worldTileset.DrawTileAt(dst, tile, px, py)
+				if kbdata.IsInteractive(tile) {
+					vector.DrawFilledRect(dst, float32(px+mapTileW/2-6), float32(py+mapTileH/2-6),
+						12, 12, tileColor(tile), false)
+				}
+			} else {
+				vector.DrawFilledRect(dst, float32(px), float32(py),
+					mapTileW, mapTileH, tileColor(tile), false)
+			}
 		}
 	}
-	// 玩家(依相機夾制後的實際螢幕位置)
-	vector.DrawFilledRect(dst, float32((s.px-ox)*tileSize), float32((s.py-oy)*tileSize),
-		tileSize, tileSize, color.RGBA{0, 220, 220, 255}, false)
+	// 玩家(依相機夾制後的實際螢幕位置,青色框標記)
+	vector.StrokeRect(dst, float32((s.px-ox)*mapTileW)+2, float32((s.py-oy)*mapTileH)+2,
+		mapTileW-4, mapTileH-4, 2, color.RGBA{0, 230, 230, 255}, false)
 
 	if s.msg != "" && s.assets != nil && s.assets.Font != nil {
 		render.DrawText(dst, s.assets.Font, s.msg, 8, 160, color.RGBA{240, 220, 40, 255})
