@@ -4,12 +4,17 @@ import (
 	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/wicanr2/open-king-bounty-go/internal/gamestate"
 	"github.com/wicanr2/open-king-bounty-go/internal/input"
 	"github.com/wicanr2/open-king-bounty-go/internal/kbdata"
 	"github.com/wicanr2/open-king-bounty-go/internal/render"
 )
+
+// selectBorderInset 是選角畫面外層黃框厚度(邏輯 px);黃框內填深藍,再置中貼美術。
+// 對照 oracle .oc_select.png:外圈細黃邊 + 內圈深藍底(非世界地圖那種整片厚黃)。
+const selectBorderInset = 3
 
 // classNames 是四職業的起手頭銜(rank 0),索引 = class。
 var classNames = []string{"騎士", "遊俠", "女巫師", "蠻俠"}
@@ -69,7 +74,11 @@ func (s *CharSelectScreen) start(class int) Transition {
 // C 版這行字沒有底色 FillRect,是直接印在美術圖上,靠 render.DrawText 的雙層
 // 合成(4 方位黑外框)在任何底色上都清楚,所以這裡也不必畫底色。
 func (s *CharSelectScreen) Draw(dst *ebiten.Image) {
+	// 外圈細黃邊 + 內圈深藍底(對照 oracle;colorBorder=#ffff55、colorStatus=#0000aa,
+	// 皆定義於 worldmap.go 同 package)。先整片黃,再內縮 selectBorderInset 填深藍。
 	dst.Fill(colorBorder)
+	vector.DrawFilledRect(dst, selectBorderInset, selectBorderInset,
+		320-2*selectBorderInset, 200-2*selectBorderInset, colorStatus, false)
 	if selectArt != nil {
 		render.DrawTile(dst, selectArt, selectArtX, selectArtY)
 	}
