@@ -104,10 +104,8 @@ func troopHP(a *kbdata.Assets, troopID int) int {
 // 動作(射擊/移動/近戰),外層要不要換單位只看 Acted 有沒有被設起來。
 //
 // 已略過/簡化之處(務必核實,見套件層級的收尾報告):
-//  1. 飛行(unit_fly_offset/fly_unit,src/game.c:5955-5975)未移植——本函式的
-//     u.Flights 只會被 ResetTurn 正確重設,但 AIUnitThink 本身不會消耗它;
-//     會飛的單位在沒有 shots、且沒有近戰目標時,直接落到下面的「移動」分支,
-//     用走的路徑演算法(aiClosestOffset)處理,不會真的飛越障礙/直接貼近目標。
+//  1. 飛行(unit_fly_offset/fly_unit)已於 flight.go 移植並在此接上飛行分支
+//     (凍結→遠攻→飛行→近戰/移動,對齊 C ai_unit_think 順序)。
 //  2. 「近戰攻擊」不是照抄 C 版「移動演算法算出的落點恰好是敵方佔用格,
 //     move_unit 偵測佔用轉呼叫 hit_unit」這個統一機制,而是先用 Adjacent
 //     判斷、直接呼叫 UnitHitUnit——兩者結果等價(推導見下方 aiClosestOffset
@@ -140,7 +138,16 @@ func (c *Combat) AIUnitThink(a *kbdata.Assets, rng kbrng.Rand) (pass bool) {
 		}
 	}
 
-	// 飛行分支:本次未移植,見函式說明「已略過」第 1 點。
+	// 飛行:對應 C `if (!acted && u->flights && close_target == -1)`——有飛行點且
+	// 身邊無近戰目標時,飛到遠處目標的相鄰空格(越過中途障礙)。
+	if !acted && u.Flights > 0 && !hasClose {
+		if farSide, farID, hasFar := c.AIPickTarget(a, false); hasFar {
+			nx, ny := c.aiFlyOffset(c.Side, c.UnitID, farSide, farID)
+			if nx != u.X || ny != u.Y {
+				acted = c.FlyUnit(c.Side, c.UnitID, nx, ny)
+			}
+		}
+	}
 
 	// 近戰或移動:對應 C 的 `if (!acted && !u->shots) { ... }`——只有沒有剩餘
 	// 彈藥(或本來就不能遠攻)的單位才會嘗試近戰/移動。
