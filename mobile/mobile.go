@@ -53,6 +53,11 @@ func init() {
 		} else {
 			log.Printf("load select art: %v", err)
 		}
+		if art, err := render.LoadPNGTileFS(embedded.FS(), "free/title.png"); err == nil {
+			screen.SetTitleArt(art)
+		} else {
+			log.Printf("load title art: %v", err)
+		}
 	}
 
 	// SetGame 讓 ebitenmobile 生成的 Java/Kotlin 綁定驅動這顆遊戲迴圈。

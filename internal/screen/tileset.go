@@ -37,3 +37,10 @@ var selectArt *ebiten.Image
 
 // SetSelectArt 由進入點在載入資產後設定選角背景圖。
 func SetSelectArt(img *ebiten.Image) { selectArt = img }
+
+// titleArt 是開場標題整張美術(title.png,320×200 全螢幕,對齊 C 版 GR_TITLE /
+// display_title:黑底貼滿此圖,按任意鍵進選角)。
+var titleArt *ebiten.Image
+
+// SetTitleArt 由進入點在載入資產後設定標題圖。
+func SetTitleArt(img *ebiten.Image) { titleArt = img }

@@ -70,6 +70,11 @@ func main() {
 	} else {
 		log.Printf("load select art: %v", err)
 	}
+	if art, err := render.LoadPNGTileNamed(*datadir, "title.png"); err == nil {
+		screen.SetTitleArt(art)
+	} else {
+		log.Printf("load title art: %v", err)
+	}
 
 	ebiten.SetWindowSize(app.LogicalW*3, app.LogicalH*3)
 	ebiten.SetWindowTitle("御封戰將 (openkb-go)")
