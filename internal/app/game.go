@@ -12,10 +12,15 @@ import (
 	"github.com/wicanr2/open-king-bounty-go/internal/screen"
 )
 
-// 原版邏輯解析度 320×200(DOS/free 共用),放大後給桌面/手機。
+// 原版邏輯解析度 320×200(DOS/free 共用);遊戲美術/UI/ASCII 都在此座標空間繪製。
+// SCALE 是輸出放大倍率:美術層以 nearest 放大保持 pixel art 銳利,CJK 在放大後的輸出
+// 解析度以 24×24 疊上(見 render.FlushCJK)。SCALE=3 時 CJK 8 邏輯格 ×3=24 恰好 1:1 像素完美。
 const (
 	LogicalW = 320
 	LogicalH = 200
+	SCALE    = 3
+	OutputW  = LogicalW * SCALE
+	OutputH  = LogicalH * SCALE
 )
 
 // Game 實作 ebiten.Game,驅動 screen.Manager + 輸入 + 觸控疊層。
@@ -24,7 +29,8 @@ type Game struct {
 	assets *kbdata.Assets
 	boot   func() // 第一幀執行一次的初始化(建立 ebiten.Image 等需繪圖/JVM 就緒的工作)
 	booted bool
-	touch  bool // 是否繪製觸控疊層(僅行動裝置;桌面用鍵盤,畫了會污染「與 C 一模一樣」的內容區)
+	touch  bool           // 是否繪製觸控疊層(僅行動裝置;桌面用鍵盤,畫了會污染「與 C 一模一樣」的內容區)
+	art    *ebiten.Image  // 320×200 美術層 offscreen(每幀重畫,再 nearest 放大到輸出)
 }
 
 // New 建立遊戲迴圈,root 為起始畫面。boot 可為 nil;非 nil 時於「第一次 Draw」執行一次——
@@ -42,8 +48,9 @@ func (g *Game) Update() error {
 		return nil
 	}
 	if tx, ty, ok := pollTap(); ok {
+		// 觸控/滑鼠座標在輸出空間(960×600),換算回 320 邏輯供觸控佈局解析。
 		layout := input.NewTouchLayout(g.mgr.Keymap())
-		if a := layout.Resolve(input.Tap{X: tx, Y: ty}); !a.IsNone() {
+		if a := layout.Resolve(input.Tap{X: tx / SCALE, Y: ty / SCALE}); !a.IsNone() {
 			g.mgr.Update(a)
 		}
 	}
@@ -57,25 +64,36 @@ func (g *Game) Draw(dst *ebiten.Image) {
 			g.boot() // JVM/繪圖已就緒,此時建 ebiten.Image 安全
 		}
 	}
-	g.mgr.Draw(dst)
-	if !g.touch {
-		return // 桌面:不畫觸控疊層,內容區與 C openkb 一模一樣
+	if g.art == nil {
+		g.art = ebiten.NewImage(LogicalW, LogicalH)
 	}
-	var font *kbdata.CJKAtlas
-	if g.assets != nil {
-		font = g.assets.Font
+	// 雙層合成:① 美術/UI/ASCII 畫進 320 美術層,CJK 同時記進 draw-list(不畫進美術層)。
+	render.ResetCJK()
+	g.art.Clear()
+	g.mgr.Draw(g.art)
+	if g.touch {
+		var font *kbdata.CJKAtlas
+		if g.assets != nil {
+			font = g.assets.Font
+		}
+		render.DrawTouchControls(g.art, input.NewTouchLayout(g.mgr.Keymap()).Controls(), font)
 	}
-	render.DrawTouchControls(dst, input.NewTouchLayout(g.mgr.Keymap()).Controls(), font)
+	// ② 美術層 nearest 放大到輸出解析度(pixel art 銳利)。
+	var op ebiten.DrawImageOptions
+	op.GeoM.Scale(SCALE, SCALE)
+	dst.DrawImage(g.art, &op)
+	// ③ CJK 在輸出解析度以 24×24 + 黑外框疊上(銳利可讀)。
+	render.FlushCJK(dst, SCALE)
 }
 
 func (g *Game) Layout(outsideW, outsideH int) (int, int) {
-	return LogicalW, LogicalH
+	return OutputW, OutputH
 }
 
 // LayoutF 是 ebiten 2.8+ 的浮點版 Layout(LayoutFer 介面)。行動裝置走高 DPI 浮點路徑,
 // 只實作 int Layout 會被塞進垃圾尺寸(MinInt64)→ viewport 無效 → 全黑。實作此法即修正。
 func (g *Game) LayoutF(outsideWidth, outsideHeight float64) (float64, float64) {
-	return LogicalW, LogicalH
+	return OutputW, OutputH
 }
 
 // pollAction 把「本幀剛按下」的按鍵轉成單一 input.Action(中性 Key → Action)。
