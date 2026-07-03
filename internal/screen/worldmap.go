@@ -2,6 +2,7 @@ package screen
 
 import (
 	"image/color"
+	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -11,7 +12,14 @@ import (
 	"github.com/wicanr2/open-king-bounty-go/internal/gamestate"
 	"github.com/wicanr2/open-king-bounty-go/internal/input"
 	"github.com/wicanr2/open-king-bounty-go/internal/kbdata"
+	"github.com/wicanr2/open-king-bounty-go/internal/render"
+	"github.com/wicanr2/open-king-bounty-go/internal/save"
 )
+
+// demoRecruitTroopID 是踩到棲地(TileDwelling1..4)時暫代的招募兵種(index 0=農夫)。
+// TODO: 真正的「棲地住哪種兵」需要世界狀態 dwelling_troop(land.ini 尚未解析),
+// 屆時應依 tile 種類 / 座標查表決定 troopID,而不是固定寫死。
+const demoRecruitTroopID = 0
 
 // placeholderFoe 是暫代的敵方部隊(野狼×5),之後改取自世界狀態 foe_troops。
 func placeholderFoe() [combat.MaxUnits]gamestate.Squad {
@@ -34,7 +42,8 @@ type WorldMapScreen struct {
 	gs     *gamestate.GameState
 	assets *kbdata.Assets
 	cont   int
-	px, py int // 玩家在該洲的 tile 座標
+	px, py int    // 玩家在該洲的 tile 座標
+	msg    string // 存讀檔提示(「已存檔/已讀檔/無存檔」等),不計時,下次動作前持續顯示
 }
 
 // NewWorldMapScreen 建立地圖畫面,玩家起點掃描該洲第一個草地格。
@@ -64,6 +73,18 @@ func walkable(tile byte) bool {
 }
 
 func (s *WorldMapScreen) Update(a input.Action) Transition {
+	// 存讀檔:'s' 存進 slot 0,'l' 讀 slot 0。無關乎世界地圖資產是否載入,故放在
+	// nil 檢查之前;結果(成功/失敗)寫進 s.msg,由 Draw 顯示。
+	if a.Kind == input.ActLetter {
+		switch a.Rune {
+		case 's':
+			s.handleSave()
+			return Stay()
+		case 'l':
+			return s.handleLoad()
+		}
+	}
+
 	if s.assets == nil || s.assets.World == nil {
 		if a.Kind == input.ActCancel {
 			return Replace(NewTitleScreen(s.assets))
@@ -103,7 +124,41 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		foe := placeholderFoe()
 		return Push(NewCombatScreen(s.gs, s.assets, foe, uint32(nx*kbdata.LevelH+ny+1)))
 	}
+	// 踩到棲地 → 招兵(疊上 RecruitScreen,離開後回地圖)
+	if tile >= kbdata.TileDwelling1 && tile <= kbdata.TileDwelling4 {
+		// TODO: 棲地實際教哪個兵種需世界狀態 dwelling_troop(land.ini 尚未解析);
+		// 暫寫死 demoRecruitTroopID 示範流程。
+		return Push(NewRecruitScreen(s.gs, s.assets, demoRecruitTroopID))
+	}
 	return Stay()
+}
+
+// handleSave 把目前 GameState 存進 slot 0,結果寫進 s.msg。
+func (s *WorldMapScreen) handleSave() {
+	if s.gs == nil {
+		s.msg = "無角色資料,無法存檔"
+		return
+	}
+	if err := save.SaveGame(s.gs, 0); err != nil {
+		s.msg = "存檔失敗: " + err.Error()
+		return
+	}
+	s.msg = "已存檔"
+}
+
+// handleLoad 讀回 slot 0;成功則以載入的 GameState 換掉本畫面(Replace),
+// 失敗(含存檔不存在)只更新提示、留在原地圖。
+func (s *WorldMapScreen) handleLoad() Transition {
+	loaded, err := save.LoadGame(0)
+	if err != nil {
+		if os.IsNotExist(err) {
+			s.msg = "無存檔"
+		} else {
+			s.msg = "讀檔失敗: " + err.Error()
+		}
+		return Stay()
+	}
+	return Replace(NewWorldMapScreen(loaded, s.assets))
 }
 
 // tileColor 依 tile 分類回色塊顏色(P2 暫代美術)。
@@ -178,9 +233,20 @@ func (s *WorldMapScreen) Draw(dst *ebiten.Image) {
 	vector.DrawFilledRect(dst, float32((s.px-ox)*tileSize), float32((s.py-oy)*tileSize),
 		tileSize, tileSize, color.RGBA{0, 220, 220, 255}, false)
 
-	ebitenutil.DebugPrintAt(dst, "arrows: move  ESC: title", 6, 186)
+	if s.msg != "" && s.assets != nil && s.assets.Font != nil {
+		render.DrawText(dst, s.assets.Font, s.msg, 8, 160, color.RGBA{240, 220, 40, 255})
+	}
+
+	ebitenutil.DebugPrintAt(dst, "arrows: move  s: save  l: load  ESC: title", 6, 186)
 }
 
 func (s *WorldMapScreen) Keymap() input.Keymap {
-	return input.Keymap{Directions: true, Cancel: "標題"}
+	return input.Keymap{
+		Directions: true,
+		Cancel:     "標題",
+		Letters: []input.LetterItem{
+			{Rune: 's', Label: "存檔"},
+			{Rune: 'l', Label: "讀檔"},
+		},
+	}
 }
