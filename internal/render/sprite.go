@@ -108,3 +108,18 @@ func (s *Sprite) DrawFrame(dst *ebiten.Image, n, x, y int) {
 	op.GeoM.Translate(float64(x), float64(y))
 	dst.DrawImage(f, op)
 }
+
+// DrawFrameFlipped 把第 n 幀水平鏡射後畫到 dst 的 (x,y)(左上角位置不變,只有圖案
+// 本身左右翻轉)。對齊 C 版 env-sdl.c SDL_TakeSurface(..., flip=1) 的做法:戰鬥畫面
+// 兩側單位共用同一張兵種圖,敵方(side 1)只是把玩家那張圖水平鏡射,不必準備第二張圖。
+func (s *Sprite) DrawFrameFlipped(dst *ebiten.Image, n, x, y int) {
+	f := s.Frame(n)
+	if f == nil || dst == nil {
+		return
+	}
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(-1, 1)
+	op.GeoM.Translate(float64(s.FrameW), 0) // 鏡射後平移回 [0,FrameW] 範圍
+	op.GeoM.Translate(float64(x), float64(y))
+	dst.DrawImage(f, op)
+}

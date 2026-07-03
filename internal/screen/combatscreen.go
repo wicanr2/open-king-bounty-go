@@ -5,7 +5,6 @@ import (
 	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/wicanr2/open-king-bounty-go/internal/combat"
@@ -16,12 +15,9 @@ import (
 	"github.com/wicanr2/open-king-bounty-go/internal/render"
 )
 
-const (
-	cellW = 40
-	cellH = 32
-	gridX = 40 // (320 - 6*40)/2 置中
-	gridY = 24
-)
+// 戰鬥棋盤格對齊 C draw_combat(game.c:1298):共用世界地圖那套 local.map 座標
+// (mapX/mapY/mapTileW/mapTileH,定義在 worldmap.go),棋盤 BoardW×BoardH(6×5)
+// 從 (mapX,mapY) 起、每格 mapTileW×mapTileH,不需要另外的置中常數。
 
 // CombatScreen 是戰鬥畫面:6×5 棋盤,玩家用方向鍵操作 side 0,AI 自動走 side 1。
 // 走進相鄰敵格 = 攻擊;Confirm = 待命;Cancel = 撤退(回地圖)。勝負後任意鍵回地圖。
@@ -145,69 +141,104 @@ func (s *CombatScreen) enemyAt(x, y int) (side, id int, ok bool) {
 	return 0, 0, false
 }
 
+// Draw 對齊 C draw_combat(game.c:1298-1355):黃框底(同 worldmap/charselect,見
+// colorBorder 註解)→ 棋盤地形(comtiles.png,omap 值即幀索引)→ 兩側單位(兵種
+// sprite,side 1 水平鏡射同一張圖)+ 部隊數字(bottom-right,對齊 C:印的是
+// turn_count 不是 count)→ 頂部狀態列(對齊 draw_combat_statusbar)。
 func (s *CombatScreen) Draw(dst *ebiten.Image) {
 	c := s.combat
-	// 棋盤格
+	dst.Fill(colorBorder)
+
+	// 棋盤地形
 	for y := 0; y < combat.BoardH; y++ {
 		for x := 0; x < combat.BoardW; x++ {
-			px, py := float32(gridX+x*cellW), float32(gridY+y*cellH)
-			fill := color.RGBA{40, 40, 55, 255}
-			if c.Obstacle(x, y) {
-				fill = color.RGBA{90, 80, 70, 255} // 障礙
+			px, py := mapX+x*mapTileW, mapY+y*mapTileH
+			if comtilesSprite != nil {
+				comtilesSprite.DrawFrame(dst, int(c.Omap[y][x]), px, py)
+			} else {
+				fill := color.RGBA{40, 40, 55, 255}
+				if c.Obstacle(x, y) {
+					fill = color.RGBA{90, 80, 70, 255} // 障礙
+				}
+				vector.DrawFilledRect(dst, float32(px), float32(py), mapTileW, mapTileH, fill, false)
+				vector.StrokeRect(dst, float32(px), float32(py), mapTileW, mapTileH, 1, color.RGBA{70, 70, 90, 255}, false)
 			}
-			vector.DrawFilledRect(dst, px, py, cellW, cellH, fill, false)
-			vector.StrokeRect(dst, px, py, cellW, cellH, 1, color.RGBA{70, 70, 90, 255}, false)
 		}
 	}
-	// 單位
+
+	// 單位(C: u->turn_count == 0 才略過不畫,不是 count == 0)
 	for side := 0; side < combat.MaxSides; side++ {
 		for i := 0; i < combat.MaxUnits; i++ {
 			u := &c.Units[side][i]
-			if u.Count == 0 {
+			if u.TurnCount == 0 {
 				continue
 			}
-			px, py := float32(gridX+u.X*cellW), float32(gridY+u.Y*cellH)
-			body := color.RGBA{60, 120, 220, 255} // 玩家:藍
-			if side == 1 {
-				body = color.RGBA{200, 60, 60, 255} // 敵方:紅
+			px, py := mapX+u.X*mapTileW, mapY+u.Y*mapTileH
+			if sp := troopSpriteFor(u.TroopID); sp != nil {
+				if side == 0 {
+					sp.DrawFrame(dst, u.Frame, px, py)
+				} else {
+					sp.DrawFrameFlipped(dst, u.Frame, px, py)
+				}
+			} else {
+				body := color.RGBA{60, 120, 220, 255} // 玩家:藍
+				if side == 1 {
+					body = color.RGBA{200, 60, 60, 255} // 敵方:紅
+				}
+				vector.DrawFilledRect(dst, float32(px+2), float32(py+2), mapTileW-4, mapTileH-4, body, false)
 			}
-			vector.DrawFilledRect(dst, px+2, py+2, cellW-4, cellH-4, body, false)
+			// 當前單位高亮:C 版 draw_combat 本身沒畫這個(靠另一套目標游標機制),
+			// 但 Go 版鍵盤操作沒有那套游標,保留這個黃框當唯一的「輪到誰」視覺提示。
 			if side == c.Side && i == c.UnitID {
-				vector.StrokeRect(dst, px, py, cellW, cellH, 2, color.RGBA{240, 220, 40, 255}, false) // 當前單位:黃框
+				vector.StrokeRect(dst, float32(px), float32(py), mapTileW, mapTileH, 2, color.RGBA{240, 220, 40, 255}, false)
 			}
-			name := "?"
-			if u.TroopID < len(s.assets.Troops) {
-				name = string([]rune(s.assets.Troops[u.TroopID].Name)[:1]) // 首字
+			if s.assets != nil && s.assets.Font != nil {
+				count := fmt.Sprintf("%d", u.TurnCount)
+				tx := px + mapTileW - len(count)*render.CJKCell
+				ty := py + mapTileH - render.CJKCell
+				render.DrawText(dst, s.assets.Font, count, tx, ty, color.White)
 			}
-			if s.assets.Font != nil {
-				render.DrawText(dst, s.assets.Font, name, int(px)+2, int(py)+1, color.White)
-			}
-			ebitenutil.DebugPrintAt(dst, fmt.Sprintf("%d", u.Count), int(px)+2, int(py)+cellH-14)
 		}
 	}
-	// 狀態列(CJK 用 atlas 畫,ASCII 提示用 DebugPrint)
-	cur := &c.Units[c.Side][c.UnitID]
-	turn := "你的回合"
-	if c.Side == 1 {
-		turn = "敵方回合"
-	}
-	cname := "?"
-	if cur.TroopID < len(s.assets.Troops) {
-		cname = s.assets.Troops[cur.TroopID].Name
-	}
-	if s.assets.Font != nil {
-		render.DrawText(dst, s.assets.Font, turn+" "+cname, 6, 4, color.White)
-	}
-	ebitenutil.DebugPrintAt(dst, fmt.Sprintf("x%d  arrows:move/attack ENTER:wait ESC:flee", cur.Count), 150, 8)
 
-	if s.result != 0 && s.assets.Font != nil {
+	s.drawStatusBar(dst)
+
+	if s.result != 0 && s.assets != nil && s.assets.Font != nil {
 		msg := "勝利!"
 		if s.result == combat.ResultAIWon {
 			msg = "戰敗…"
 		}
 		render.DrawText(dst, s.assets.Font, msg, 130, 178, color.RGBA{255, 230, 60, 255})
-		ebitenutil.DebugPrintAt(dst, "(press any key)", 128, 178)
+		render.DrawText(dst, s.assets.Font, "(按任意鍵)", 120, 188, color.White)
 	}
+}
+
+// drawStatusBar 對齊 C draw_combat_statusbar(game.c:5604-5624):藍底(colorStatus,
+// 沿用世界地圖那份)一律先清;只有玩家側(side==0)且該單位未失控時才印文字
+// 「選項 / <兵種名> [F,]M<剩餘移動>[,S<剩餘彈藥>]」——C 版對 AI 側/失控單位就是
+// 留空白藍條,沒有另外的「敵方回合」提示,這裡照實移植。
+func (s *CombatScreen) drawStatusBar(dst *ebiten.Image) {
+	vector.DrawFilledRect(dst, statusX, statusY, statusW, statusH, colorStatus, false)
+
+	c := s.combat
+	u := &c.Units[c.Side][c.UnitID]
+	if c.Side != 0 || u.OutOfControl {
+		return
+	}
+	if s.assets == nil || s.assets.Font == nil || u.TroopID < 0 || u.TroopID >= len(s.assets.Troops) {
+		return
+	}
+	t := s.assets.Troops[u.TroopID]
+
+	text := " 選項 / " + t.Name + " "
+	if t.Abilities&kbdata.AbilFly != 0 {
+		text += "F,"
+	}
+	text += fmt.Sprintf("M%d", u.Moves)
+	if t.RangedShots > 0 {
+		text += fmt.Sprintf(",S%d", u.Shots)
+	}
+	render.DrawText(dst, s.assets.Font, text, statusX, statusY, color.White)
 }
 
 func (s *CombatScreen) Keymap() input.Keymap {

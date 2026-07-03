@@ -75,6 +75,19 @@ func main() {
 	} else {
 		log.Printf("load title art: %v", err)
 	}
+	if comtiles, err := render.LoadSpriteOpaque(*datadir, "comtiles.png", 48, 34); err == nil {
+		screen.SetComtiles(comtiles)
+	} else {
+		log.Printf("load comtiles: %v", err)
+	}
+	for id, name := range screen.TroopFileNames {
+		sp, err := render.LoadSprite(*datadir, name+".png", 48, 34)
+		if err != nil {
+			log.Printf("load troop sprite %s: %v", name, err)
+			continue
+		}
+		screen.SetTroopSprite(id, sp)
+	}
 
 	ebiten.SetWindowSize(app.LogicalW*3, app.LogicalH*3)
 	ebiten.SetWindowTitle("御封戰將 (openkb-go)")

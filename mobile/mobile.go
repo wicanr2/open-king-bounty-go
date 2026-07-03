@@ -58,6 +58,19 @@ func init() {
 		} else {
 			log.Printf("load title art: %v", err)
 		}
+		if comtiles, err := render.LoadSpriteOpaqueFS(embedded.FS(), "free/comtiles.png", 48, 34); err == nil {
+			screen.SetComtiles(comtiles)
+		} else {
+			log.Printf("load comtiles: %v", err)
+		}
+		for id, name := range screen.TroopFileNames {
+			sp, err := render.LoadSpriteFS(embedded.FS(), "free/"+name+".png", 48, 34)
+			if err != nil {
+				log.Printf("load troop sprite %s: %v", name, err)
+				continue
+			}
+			screen.SetTroopSprite(id, sp)
+		}
 	}
 
 	// SetGame 讓 ebitenmobile 生成的 Java/Kotlin 綁定驅動這顆遊戲迴圈。
