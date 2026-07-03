@@ -7,10 +7,21 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
+	"github.com/wicanr2/open-king-bounty-go/internal/combat"
 	"github.com/wicanr2/open-king-bounty-go/internal/gamestate"
 	"github.com/wicanr2/open-king-bounty-go/internal/input"
 	"github.com/wicanr2/open-king-bounty-go/internal/kbdata"
 )
+
+// placeholderFoe 是暫代的敵方部隊(野狼×5),之後改取自世界狀態 foe_troops。
+func placeholderFoe() [combat.MaxUnits]gamestate.Squad {
+	var f [combat.MaxUnits]gamestate.Squad
+	f[0] = gamestate.Squad{TroopID: 3, Count: 5} // 野狼
+	for i := 1; i < combat.MaxUnits; i++ {
+		f[i] = gamestate.Squad{TroopID: 255}
+	}
+	return f
+}
 
 const (
 	tileSize = 10 // 每格像素(P2 暫用色塊,tileset 美術之後接)
@@ -85,6 +96,12 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 	// 踩到城鎮 → 進城(疊上 TownScreen,離開後回地圖)
 	if tile == kbdata.TileTown {
 		return Push(NewTownScreen(s.gs, s.assets))
+	}
+	// 踩到敵人 → 進戰鬥(疊上 CombatScreen,結束後回地圖)
+	if tile == kbdata.TileFoe {
+		// TODO: 敵方部隊應取自世界狀態 foe_troops;暫用佔位(野狼)+ 依座標決定 seed。
+		foe := placeholderFoe()
+		return Push(NewCombatScreen(s.gs, s.assets, foe, uint32(nx*kbdata.LevelH+ny+1)))
 	}
 	return Stay()
 }

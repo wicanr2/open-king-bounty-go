@@ -24,8 +24,9 @@ const (
 const defaultDataDir = "/home/anr2/openkb/openkb-code/data"
 
 var (
-	datadir    = flag.String("datadir", defaultDataDir, "遊戲資料目錄(cjk24.bin / free/*.ini / free/*.png)")
-	startClass = flag.Int("startclass", -1, "debug:>=0 直接以該職業建角進遊戲中畫面(截圖驗證用)")
+	datadir     = flag.String("datadir", defaultDataDir, "遊戲資料目錄(cjk24.bin / free/*.ini / free/*.png)")
+	startClass  = flag.Int("startclass", -1, "debug:>=0 直接以該職業建角進世界地圖(截圖驗證用)")
+	startCombat = flag.Bool("startcombat", false, "debug:直接切入一場戰鬥(截圖驗證用)")
 )
 
 // Game 把 Ebiten 迴圈接到 screen.Manager。
@@ -84,6 +85,10 @@ func pollAction() input.Action {
 }
 
 func rootScreen(a *kbdata.Assets) screen.Screen {
+	if *startCombat {
+		gs := gamestate.NewGame(a, "Sir Loin", 0)
+		return screen.NewDebugCombatScreen(gs, a)
+	}
 	if *startClass >= 0 && *startClass < 4 {
 		gs := gamestate.NewGame(a, "Sir Loin", *startClass)
 		return screen.NewWorldMapScreen(gs, a)
