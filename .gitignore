@@ -29,3 +29,4 @@
 /android/build/
 /android/local.properties
 /android/app/libs/*.aar
+openkb-sources.jar

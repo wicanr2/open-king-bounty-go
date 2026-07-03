@@ -8,3 +8,9 @@ var worldTileset *render.Tileset
 
 // SetTileset 由進入點(cmd)在載入資產後設定世界 tileset。
 func SetTileset(t *render.Tileset) { worldTileset = t }
+
+// heroSprite 是世界地圖上的主角 sprite(cursor.png,12 幀 48×34)。
+var heroSprite *render.Sprite
+
+// SetHero 由進入點在載入資產後設定主角 sprite。
+func SetHero(s *render.Sprite) { heroSprite = s }

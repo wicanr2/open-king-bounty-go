@@ -1,6 +1,7 @@
 package screen
 
 import (
+	"fmt"
 	"image/color"
 	"os"
 
@@ -31,11 +32,16 @@ func placeholderFoe() [combat.MaxUnits]gamestate.Squad {
 	return f
 }
 
+// 版面對齊 C 版 openkb(data/free/ui.ini [map]/[tile] + game.c draw_map):
+//   地圖 viewport 16,21 寬240高170;每 tile 48×34 → 5×5 格;玩家永遠在正中格。
+//   Y 軸翻轉:遊戲 y 向上為北,螢幕上方 = 高 y(C: pos.y=(perim-1-j)*h+mapY)。
 const (
-	mapTileW = 48 // 原生 tileset tile 尺寸(free TILE_W/H)
+	mapTileW = 48
 	mapTileH = 34
-	viewCols = 320/mapTileW + 1 // 涵蓋 320 寬所需欄數(含邊緣部分格)
-	viewRows = 200/mapTileH + 1
+	mapX     = 16
+	mapY     = 21
+	perim    = 5 // 240/48 = 170/34 = 5(5×5 viewport)
+	radii    = 2 // (perim-1)/2:玩家置中,每邊 2 格
 )
 
 // WorldMapScreen 是世界地圖:顯示 land.org 的 tile(暫以色塊分類)、玩家可走動、踩城鎮進城。
@@ -95,9 +101,9 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 	nx, ny := s.px, s.py
 	switch a.Kind {
 	case input.ActUp:
-		ny--
+		ny++ // Y 翻轉:向上 = 北 = 高 y(對齊 C 版螢幕座標)
 	case input.ActDown:
-		ny++
+		ny--
 	case input.ActLeft:
 		nx--
 	case input.ActRight:
@@ -194,61 +200,73 @@ func tileColor(tile byte) color.Color {
 	}
 }
 
-// camera 回傳夾制後的視窗左上角 tile 座標(以玩家為中心,但不超出地圖邊界)。
-func (s *WorldMapScreen) camera() (int, int) {
-	ox := s.px - viewCols/2
-	oy := s.py - viewRows/2
-	if ox < 0 {
-		ox = 0
-	}
-	if oy < 0 {
-		oy = 0
-	}
-	if ox > kbdata.LevelW-viewCols {
-		ox = kbdata.LevelW - viewCols
-	}
-	if oy > kbdata.LevelH-viewRows {
-		oy = kbdata.LevelH - viewRows
-	}
-	return ox, oy
-}
-
 func (s *WorldMapScreen) Draw(dst *ebiten.Image) {
 	if s.assets == nil || s.assets.World == nil {
 		ebitenutil.DebugPrint(dst, "world map: land.org 未載入")
 		return
 	}
-	ox, oy := s.camera()
-	for row := 0; row < viewRows; row++ {
-		for col := 0; col < viewCols; col++ {
-			tx, ty := ox+col, oy+row
-			if tx < 0 || ty < 0 || tx >= kbdata.LevelW || ty >= kbdata.LevelH {
-				continue
+	// 5×5 viewport,玩家置中,Y 翻轉(對齊 C 版 draw_map:pos.y=(perim-1-j)*h+mapY)。
+	borderX := s.px - radii
+	borderY := s.py - radii
+	for j := 0; j < perim; j++ {
+		for i := 0; i < perim; i++ {
+			mx, my := borderX+i, borderY+j
+			sx := mapX + i*mapTileW
+			sy := mapY + (perim-1-j)*mapTileH
+			tile := byte(kbdata.TileDeepWater) // 界外 = 深水(對齊 C 邊界填色)
+			if mx >= 0 && my >= 0 && mx < kbdata.LevelW && my < kbdata.LevelH {
+				tile = s.assets.World.Tile(s.cont, mx, my)
 			}
-			tile := s.assets.World.Tile(s.cont, tx, ty)
-			px, py := col*mapTileW, row*mapTileH
 			if worldTileset != nil {
-				// 地形用真 tile 圖;互動物件(byte>71,不在 tileset)先鋪 grass 再疊色標記
-				worldTileset.DrawTileAt(dst, tile, px, py)
-				if kbdata.IsInteractive(tile) {
-					vector.DrawFilledRect(dst, float32(px+mapTileW/2-6), float32(py+mapTileH/2-6),
-						12, 12, tileColor(tile), false)
-				}
+				worldTileset.DrawTileAt(dst, tile, sx, sy)
 			} else {
-				vector.DrawFilledRect(dst, float32(px), float32(py),
-					mapTileW, mapTileH, tileColor(tile), false)
+				vector.DrawFilledRect(dst, float32(sx), float32(sy), mapTileW, mapTileH, tileColor(tile), false)
 			}
 		}
 	}
-	// 玩家(依相機夾制後的實際螢幕位置,青色框標記)
-	vector.StrokeRect(dst, float32((s.px-ox)*mapTileW)+2, float32((s.py-oy)*mapTileH)+2,
-		mapTileW-4, mapTileH-4, 2, color.RGBA{0, 230, 230, 255}, false)
-
-	if s.msg != "" && s.assets != nil && s.assets.Font != nil {
-		render.DrawText(dst, s.assets.Font, s.msg, 8, 160, color.RGBA{240, 220, 40, 255})
+	// 主角 sprite 置中(cursor.png 幀 8 = KBMOUNT_RIDE 騎馬,對齊 C draw_player:
+	// hsrc.x = tile_w*(mount+frame),mount RIDE=8;無 sprite 退回青框)。
+	heroX := mapX + radii*mapTileW
+	heroY := mapY + (perim-1-radii)*mapTileH
+	if heroSprite != nil {
+		heroSprite.DrawFrame(dst, 8, heroX, heroY)
+	} else {
+		vector.StrokeRect(dst, float32(heroX)+2, float32(heroY)+2, mapTileW-4, mapTileH-4, 2, color.RGBA{0, 230, 230, 255}, false)
 	}
+	s.drawSidebar(dst)
+	if s.msg != "" && s.assets.Font != nil {
+		render.DrawText(dst, s.assets.Font, s.msg, mapX, mapY+perim*mapTileH-2, color.RGBA{240, 220, 40, 255})
+	}
+}
 
-	ebitenutil.DebugPrintAt(dst, "arrows: move  s: save  l: load  ESC: title", 6, 186)
+// drawSidebar 畫右側資訊欄(map 右緣 256→320)。簡化版:深底 + 金 + 隊伍;
+// 完整 villain 臉/coins/piece sprite 對齊 C draw_sidebar 後續補。
+func (s *WorldMapScreen) drawSidebar(dst *ebiten.Image) {
+	sx := mapX + perim*mapTileW // 256
+	vector.DrawFilledRect(dst, float32(sx), 0, float32(320-sx), 200, color.RGBA{40, 30, 22, 255}, false)
+	gs := s.gs
+	if gs == nil || s.assets == nil {
+		return
+	}
+	if s.assets.Font != nil {
+		render.DrawText(dst, s.assets.Font, "金", sx+4, 4, color.RGBA{240, 220, 40, 255})
+	}
+	ebitenutil.DebugPrintAt(dst, fmt.Sprintf("%d", gs.Gold), sx+4, 30)
+	y := 46
+	for _, sq := range gs.Army {
+		if sq.Count == 0 || sq.TroopID == 255 {
+			continue
+		}
+		nm := "?"
+		if sq.TroopID < len(s.assets.Troops) {
+			nm = string([]rune(s.assets.Troops[sq.TroopID].Name)[:1])
+		}
+		if s.assets.Font != nil {
+			render.DrawText(dst, s.assets.Font, nm, sx+4, y, color.White)
+		}
+		ebitenutil.DebugPrintAt(dst, fmt.Sprintf("%d", sq.Count), sx+30, y+6)
+		y += 26
+	}
 }
 
 func (s *WorldMapScreen) Keymap() input.Keymap {

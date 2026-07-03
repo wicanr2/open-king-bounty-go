@@ -46,6 +46,11 @@ func main() {
 	} else {
 		log.Printf("load tileset: %v(地圖退回色塊)", err)
 	}
+	if hero, err := render.LoadSprite(*datadir, "cursor.png", 48, 34); err == nil {
+		screen.SetHero(hero)
+	} else {
+		log.Printf("load hero: %v", err)
+	}
 
 	ebiten.SetWindowSize(app.LogicalW*3, app.LogicalH*3)
 	ebiten.SetWindowTitle("御封戰將 (openkb-go)")

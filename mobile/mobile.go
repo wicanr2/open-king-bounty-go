@@ -33,6 +33,11 @@ func init() {
 		} else {
 			log.Printf("load tileset: %v", err)
 		}
+		if hero, err := render.LoadSpriteFS(embedded.FS(), "free/cursor.png", 48, 34); err == nil {
+			screen.SetHero(hero)
+		} else {
+			log.Printf("load hero: %v", err)
+		}
 	}
 
 	// SetGame 讓 ebitenmobile 生成的 Java/Kotlin 綁定驅動這顆遊戲迴圈。
