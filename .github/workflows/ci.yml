@@ -50,8 +50,8 @@ jobs:
       - uses: nttld/setup-ndk@v1
         with:
           ndk-version: r26d
-      - name: install ebitenmobile
-        run: go install github.com/hajimehoshi/ebiten/v2/cmd/ebitenmobile@latest
+      - name: install ebitenmobile (pin 到 go.mod 的 ebiten 版本, 避免生成 Java 對不上)
+        run: go install github.com/hajimehoshi/ebiten/v2/cmd/ebitenmobile@v2.7.10
       - name: bind android aar (smoke)
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
