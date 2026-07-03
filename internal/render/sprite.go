@@ -38,28 +38,52 @@ func colorKeyTopLeft(src image.Image) *ebiten.Image {
 
 // LoadSpriteFS 從檔案系統讀 sprite sheet(去背),需在遊戲迴圈啟動後呼叫(會建 ebiten.Image)。
 func LoadSpriteFS(fsys fs.FS, name string, frameW, frameH int) (*Sprite, error) {
-	data, err := fs.ReadFile(fsys, name)
-	if err != nil {
-		return nil, err
-	}
-	img, _, err := image.Decode(bytes.NewReader(data))
-	if err != nil {
-		return nil, err
-	}
-	return &Sprite{sheet: colorKeyTopLeft(img), FrameW: frameW, FrameH: frameH}, nil
+	return loadSpriteFS(fsys, name, frameW, frameH, true)
 }
 
 // LoadSprite 從 dir 下的 free/name 讀 sprite sheet(去背,桌面用)。
 func LoadSprite(dir, name string, frameW, frameH int) (*Sprite, error) {
+	return loadSprite(dir, name, frameW, frameH, true)
+}
+
+// LoadSpriteOpaqueFS 從檔案系統讀「不透明」sprite sheet(不去背)。對應 C 版素材
+// is_transparent=0 的資源(如 sidebar.png):左上角像素本身就是畫面內容(黃色裝飾框),
+// 若比照 cursor.png 套 colorkey 去背會把裝飾框一起挖空。
+func LoadSpriteOpaqueFS(fsys fs.FS, name string, frameW, frameH int) (*Sprite, error) {
+	return loadSpriteFS(fsys, name, frameW, frameH, false)
+}
+
+// LoadSpriteOpaque 是 LoadSpriteOpaqueFS 的桌面版(從 dir/free/name 讀,不去背)。
+func LoadSpriteOpaque(dir, name string, frameW, frameH int) (*Sprite, error) {
+	return loadSprite(dir, name, frameW, frameH, false)
+}
+
+func loadSpriteFS(fsys fs.FS, name string, frameW, frameH int, keyed bool) (*Sprite, error) {
+	data, err := fs.ReadFile(fsys, name)
+	if err != nil {
+		return nil, err
+	}
+	return decodeSprite(data, frameW, frameH, keyed)
+}
+
+func loadSprite(dir, name string, frameW, frameH int, keyed bool) (*Sprite, error) {
 	data, err := os.ReadFile(dir + "/free/" + name)
 	if err != nil {
 		return nil, err
 	}
+	return decodeSprite(data, frameW, frameH, keyed)
+}
+
+func decodeSprite(data []byte, frameW, frameH int, keyed bool) (*Sprite, error) {
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
-	return &Sprite{sheet: colorKeyTopLeft(img), FrameW: frameW, FrameH: frameH}, nil
+	sheet := ebiten.NewImageFromImage(img)
+	if keyed {
+		sheet = colorKeyTopLeft(img)
+	}
+	return &Sprite{sheet: sheet, FrameW: frameW, FrameH: frameH}, nil
 }
 
 // Frame 回傳第 n 幀的子圖(越界回 nil)。

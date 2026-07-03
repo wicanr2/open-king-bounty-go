@@ -14,3 +14,15 @@ var heroSprite *render.Sprite
 
 // SetHero 由進入點在載入資產後設定主角 sprite。
 func SetHero(s *render.Sprite) { heroSprite = s }
+
+// sidebarSprite 是世界地圖右側資訊欄的 UI 素材(sidebar.png,13 幀 48×34,不去背)。
+var sidebarSprite *render.Sprite
+
+// SetSidebar 由進入點在載入資產後設定側欄 sprite。
+func SetSidebar(s *render.Sprite) { sidebarSprite = s }
+
+// coinsSprite 是側欄錢袋上疊加的金幣圖(coins.png,3 幀 16×5,不去背)。
+var coinsSprite *render.Sprite
+
+// SetCoins 由進入點在載入資產後設定金幣 sprite。
+func SetCoins(s *render.Sprite) { coinsSprite = s }

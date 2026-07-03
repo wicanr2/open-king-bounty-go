@@ -44,6 +44,28 @@ const (
 	radii    = 2 // (perim-1)/2:玩家置中,每邊 2 格
 )
 
+// 頂部狀態列(對齊 C update_ui_frames:local.status.x/y = left_frame.w/top_frame.h,
+// local.status.w = screen.w - left_frame.w - right_frame.w,h = fs.h + zoom;
+// data/free/ui.ini [top] h=8、[left]/[right] w=16,故 statusY=8、statusW=320-16-16=288)。
+const (
+	statusX = mapX // 16,與地圖左緣同(left_frame.w)
+	statusY = 8
+	statusW = 288
+	statusH = 8
+)
+
+// 邊框與狀態列色(對齊 C data/free/colors.ini:frame1/frame2 = #ffff55、background = #0000aa)。
+// C 版做法是整個畫面先清成 COLOR_FRAME,狀態列/地圖/側欄再蓋掉內部,四周沒蓋到的
+// 就是視覺上的黃框——不必額外畫 4 條 FillRect。
+var (
+	colorBorder = color.RGBA{0xff, 0xff, 0x55, 0xff}
+	colorStatus = color.RGBA{0x00, 0x00, 0xaa, 0xff}
+)
+
+// worldMapDaysLeft 是狀態列「剩餘天數」暫用的固定值(C: game->days_left)。
+// GameState 尚未有 days_left 欄位,先寫死,待世界狀態補上後改真值。
+const worldMapDaysLeft = 600
+
 // WorldMapScreen 是世界地圖:顯示 land.org 的 tile(暫以色塊分類)、玩家可走動、踩城鎮進城。
 type WorldMapScreen struct {
 	gs     *gamestate.GameState
@@ -205,6 +227,9 @@ func (s *WorldMapScreen) Draw(dst *ebiten.Image) {
 		ebitenutil.DebugPrint(dst, "world map: land.org 未載入")
 		return
 	}
+	// 外框:整畫面先清成黃(對齊 C 版行為,見上方 colorBorder 註解);地圖/狀態列/
+	// 側欄接著蓋掉內部,四周留白就是黃色邊框,不必個別畫 4 條 FillRect。
+	dst.Fill(colorBorder)
 	// 5×5 viewport,玩家置中,Y 翻轉(對齊 C 版 draw_map:pos.y=(perim-1-j)*h+mapY)。
 	borderX := s.px - radii
 	borderY := s.py - radii
@@ -233,39 +258,80 @@ func (s *WorldMapScreen) Draw(dst *ebiten.Image) {
 	} else {
 		vector.StrokeRect(dst, float32(heroX)+2, float32(heroY)+2, mapTileW-4, mapTileH-4, 2, color.RGBA{0, 230, 230, 255}, false)
 	}
+	s.drawStatusBar(dst)
 	s.drawSidebar(dst)
 	if s.msg != "" && s.assets.Font != nil {
 		render.DrawText(dst, s.assets.Font, s.msg, mapX, mapY+perim*mapTileH-2, color.RGBA{240, 220, 40, 255})
 	}
 }
 
-// drawSidebar 畫右側資訊欄(map 右緣 256→320)。簡化版:深底 + 金 + 隊伍;
-// 完整 villain 臉/coins/piece sprite 對齊 C draw_sidebar 後續補。
-func (s *WorldMapScreen) drawSidebar(dst *ebiten.Image) {
-	sx := mapX + perim*mapTileW // 256
-	vector.DrawFilledRect(dst, float32(sx), 0, float32(320-sx), 200, color.RGBA{40, 30, 22, 255}, false)
-	gs := s.gs
-	if gs == nil || s.assets == nil {
+// drawStatusBar 畫頂部狀態列(對齊 C draw_statusbar → KB_TopBox(0, " 選項 / 操作說明 /
+// 剩餘天數:%d ", game->days_left)):藍底(colorStatus)+ 白字。cjk24.bin 的 atlas 其實
+// 連 ASCII(數字/標點/空白)都收錄成 24×24 glyph(與 CJK 同格),故整串直接走
+// render.DrawText 一次印完即可,不必混用 ebitenutil 的內建字(那套字級高與 8px
+// 狀態列的 CJKCell 對不上,會整段往下溢出)。
+func (s *WorldMapScreen) drawStatusBar(dst *ebiten.Image) {
+	vector.DrawFilledRect(dst, statusX, statusY, statusW, statusH, colorStatus, false)
+	if s.assets == nil || s.assets.Font == nil {
 		return
 	}
-	if s.assets.Font != nil {
-		render.DrawText(dst, s.assets.Font, "金", sx+4, 4, color.RGBA{240, 220, 40, 255})
+	text := fmt.Sprintf(" 選項 / 操作說明 / 剩餘天數:%d ", worldMapDaysLeft)
+	render.DrawText(dst, s.assets.Font, text, statusX, statusY, color.White)
+}
+
+// drawSidebar 畫右側資訊欄(對齊 C draw_sidebar,game.c:1119-1210):sidebar.png
+// 13 幀(48×34)由上而下堆疊在 map 右側(x=256,y=21 起):
+//
+//	幀8=合約框(暫無 contract 系統,恆顯示空框,不疊 villain 臉)
+//	幀9=攻城武器圖示(暫無欄位,恆顯示「未擁有」幀)
+//	幀10/4=魔法星:依 GameState.KnowsMagic,有魔法暫用靜態幀4(C 版是 tick+4 動畫)
+//	幀11=拼圖地圖框(靜態)
+//	幀12=錢袋 + coins.png 疊加金幣堆
+//
+// 素材未載入時退回舊版深色色塊,維持無資產環境仍可運作。
+func (s *WorldMapScreen) drawSidebar(dst *ebiten.Image) {
+	sx := mapX + perim*mapTileW // 256
+	if sidebarSprite == nil {
+		vector.DrawFilledRect(dst, float32(sx), 0, float32(320-sx), 200, color.RGBA{40, 30, 22, 255}, false)
+		return
 	}
-	ebitenutil.DebugPrintAt(dst, fmt.Sprintf("%d", gs.Gold), sx+4, 30)
-	y := 46
-	for _, sq := range gs.Army {
-		if sq.Count == 0 || sq.TroopID == 255 {
-			continue
+	knowsMagic := s.gs != nil && s.gs.KnowsMagic
+
+	y := mapY // 21,對齊地圖頂
+	sidebarSprite.DrawFrame(dst, 8, sx, y)
+	y += mapTileH
+	sidebarSprite.DrawFrame(dst, 9, sx, y)
+	y += mapTileH
+	if knowsMagic {
+		sidebarSprite.DrawFrame(dst, 4, sx, y)
+	} else {
+		sidebarSprite.DrawFrame(dst, 10, sx, y)
+	}
+	y += mapTileH
+	sidebarSprite.DrawFrame(dst, 11, sx, y)
+	y += mapTileH
+	sidebarSprite.DrawFrame(dst, 12, sx, y)
+	if s.gs != nil {
+		drawCoins(dst, sx, y, s.gs.Gold)
+	}
+}
+
+// drawCoins 依 C draw_sidebar 的金幣堆疊邏輯(game.c:1119+ cval 計算):三欄分別代表
+// 金幣萬/千/百位數,每欄依數字堆疊對應張數的硬幣(coins.png 3 幀 16×5),由底往上疊。
+// C 版原始位移是 2*sys->zoom(桌面 320×200/zoom=0 時實際只疊在同一位置);這裡固定
+// 抓 2px 位移,讓多枚硬幣在畫面上能看出堆疊,屬簡化近似。
+func drawCoins(dst *ebiten.Image, x, y, gold int) {
+	if coinsSprite == nil {
+		return
+	}
+	cval := [3]int{gold / 10000, (gold % 10000) / 1000, (gold % 1000) / 100}
+	coinW, coinH := coinsSprite.FrameW, coinsSprite.FrameH
+	for col, cnt := range cval {
+		dy := y + mapTileH - coinH
+		for i := 0; i < cnt; i++ {
+			coinsSprite.DrawFrame(dst, col, x+col*coinW, dy)
+			dy -= 2
 		}
-		nm := "?"
-		if sq.TroopID < len(s.assets.Troops) {
-			nm = string([]rune(s.assets.Troops[sq.TroopID].Name)[:1])
-		}
-		if s.assets.Font != nil {
-			render.DrawText(dst, s.assets.Font, nm, sx+4, y, color.White)
-		}
-		ebitenutil.DebugPrintAt(dst, fmt.Sprintf("%d", sq.Count), sx+30, y+6)
-		y += 26
 	}
 }
 

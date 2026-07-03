@@ -38,6 +38,16 @@ func init() {
 		} else {
 			log.Printf("load hero: %v", err)
 		}
+		if sidebar, err := render.LoadSpriteOpaqueFS(embedded.FS(), "free/sidebar.png", 48, 34); err == nil {
+			screen.SetSidebar(sidebar)
+		} else {
+			log.Printf("load sidebar: %v", err)
+		}
+		if coins, err := render.LoadSpriteOpaqueFS(embedded.FS(), "free/coins.png", 16, 5); err == nil {
+			screen.SetCoins(coins)
+		} else {
+			log.Printf("load coins: %v", err)
+		}
 	}
 
 	// SetGame 讓 ebitenmobile 生成的 Java/Kotlin 綁定驅動這顆遊戲迴圈。

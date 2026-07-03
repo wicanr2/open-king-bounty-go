@@ -51,6 +51,16 @@ func main() {
 	} else {
 		log.Printf("load hero: %v", err)
 	}
+	if sidebar, err := render.LoadSpriteOpaque(*datadir, "sidebar.png", 48, 34); err == nil {
+		screen.SetSidebar(sidebar)
+	} else {
+		log.Printf("load sidebar: %v", err)
+	}
+	if coins, err := render.LoadSpriteOpaque(*datadir, "coins.png", 16, 5); err == nil {
+		screen.SetCoins(coins)
+	} else {
+		log.Printf("load coins: %v", err)
+	}
 
 	ebiten.SetWindowSize(app.LogicalW*3, app.LogicalH*3)
 	ebiten.SetWindowTitle("御封戰將 (openkb-go)")
