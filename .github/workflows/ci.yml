@@ -6,7 +6,8 @@ on:
   pull_request:
 
 jobs:
-  # 純邏輯層:無 GL/無 cgo,快速跑全測(kbrng parity、資料表、gamestate…)
+  # 純邏輯層:無 GL/無 cgo,快速跑全測(kbrng parity、資料表、gamestate、combat…)。
+  # render/screen 匯入 ebiten(需 GL+顯示器)→ 併到 build-desktop 用 xvfb 跑。
   test:
     runs-on: ubuntu-latest
     steps:
@@ -14,10 +15,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-      - name: go vet (logic packages)
-        run: go vet ./internal/...
-      - name: go test (logic packages)
-        run: go test ./internal/...
+      - name: go vet + test (logic packages)
+        run: |
+          PKGS="./internal/kbdata/... ./internal/gamestate/... ./internal/kbrng/... ./internal/input/... ./internal/combat/..."
+          go vet $PKGS
+          go test $PKGS
 
   # 桌面:Ebiten 需 X11/GL 開發標頭 + cgo,驗 cmd/openkb 編得起來
   build-desktop:
@@ -27,13 +29,15 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-      - name: install GL/X11 headers
+      - name: install GL/X11 headers + xvfb
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev libxrandr-dev libxcursor-dev \
-            libxinerama-dev libxi-dev libxxf86vm-dev libasound2-dev
+          sudo apt-get install -y libgl1-mesa-dev libgl1-mesa-dri libxrandr-dev libxcursor-dev \
+            libxinerama-dev libxi-dev libxxf86vm-dev libasound2-dev xvfb
       - name: build desktop
         run: go build ./cmd/openkb
+      - name: test render + screen (needs display)
+        run: xvfb-run -a go test ./internal/render/... ./internal/screen/...
 
   # 手機:ebitenmobile bind 出 Android AAR 的 smoke(Android-only,依使用者需求)
   build-android:
