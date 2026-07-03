@@ -22,3 +22,10 @@
 
 # go build ./cmd/openkb 未加 -o 時的產物
 /openkb
+
+# Android build 產物(Gradle 快取/輸出,不入庫)
+/android/.gradle/
+/android/app/build/
+/android/build/
+/android/local.properties
+/android/app/libs/*.aar

@@ -11,8 +11,10 @@
 package render
 
 import (
+	"bytes"
 	"fmt"
 	"image"
+	"io/fs"
 	"path/filepath"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -44,6 +46,33 @@ func LoadTileset(dir string) (*Tileset, error) {
 		return nil, fmt.Errorf("render: LoadTileset tilesetb: %w", err)
 	}
 	return &Tileset{tileseta: a, tilesetb: b}, nil
+}
+
+// LoadTilesetFS 從任意檔案系統(embed.FS)讀 tileset,行動裝置用。
+// 會建立 ebiten.Image,故必須在遊戲迴圈啟動後(JVM/繪圖就緒)呼叫,不可在 init()。
+func LoadTilesetFS(fsys fs.FS) (*Tileset, error) {
+	a, err := loadPNGFromFS(fsys, "free/tileseta.png")
+	if err != nil {
+		return nil, fmt.Errorf("render: LoadTilesetFS tileseta: %w", err)
+	}
+	b, err := loadPNGFromFS(fsys, "free/tilesetb.png")
+	if err != nil {
+		return nil, fmt.Errorf("render: LoadTilesetFS tilesetb: %w", err)
+	}
+	return &Tileset{tileseta: a, tilesetb: b}, nil
+}
+
+// loadPNGFromFS 從 fsys 讀 PNG bytes 解成 *ebiten.Image。
+func loadPNGFromFS(fsys fs.FS, name string) (*ebiten.Image, error) {
+	data, err := fs.ReadFile(fsys, name)
+	if err != nil {
+		return nil, err
+	}
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	return ebiten.NewImageFromImage(img), nil
 }
 
 // TileImage 回傳地形 tile m(0-71)的 48x34 子圖。

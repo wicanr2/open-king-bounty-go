@@ -9,7 +9,10 @@
 // 這些純資料表由 P1 的移植工作(subagent)填入 tables_troops.go 等檔。
 package kbdata
 
-import "path/filepath"
+import (
+	"io/fs"
+	"os"
+)
 
 // Dwelling 是兵種棲地(對應 C 版 DWELLING_*)。
 type Dwelling uint8
@@ -93,10 +96,17 @@ type Assets struct {
 // freeIniNames 是 Load 會嘗試載入的 free 資料清單(缺檔不致命)。
 var freeIniNames = []string{"troops", "spells", "towns", "villains", "artifacts", "ui", "colors", "castles"}
 
-// Load 讀取 dir 下的遊戲資料並回傳 *Assets。
-// 靜態表(Troops/Classes)恆嵌入;檔案型資料(cjk 字、free ini)採 best-effort:
-// 缺檔不報錯(dir=="" 或部分檔缺時仍回傳可用 Assets),讓純邏輯測試免帶資料檔。
+// Load 讀取 dir 下的遊戲資料並回傳 *Assets。dir=="" 只回靜態表(供純邏輯測試)。
 func Load(dir string) (*Assets, error) {
+	if dir == "" {
+		return LoadFS(nil)
+	}
+	return LoadFS(os.DirFS(dir))
+}
+
+// LoadFS 從任意檔案系統讀遊戲資料(桌面用 os.DirFS(dir),行動裝置用 embed.FS,免解壓到唯讀 cwd)。
+// 路徑相對於 fsys 根:cjk24.bin、free/*.ini、free/land.org。best-effort:缺檔不報錯。
+func LoadFS(fsys fs.FS) (*Assets, error) {
 	a := &Assets{
 		Troops:         troopTable(),
 		Classes:        classTable(),
@@ -105,19 +115,23 @@ func Load(dir string) (*Assets, error) {
 		StartArmyTroop: startArmyTroop,
 		StartArmyCount: startArmyCount,
 	}
-	if dir == "" {
+	if fsys == nil {
 		return a, nil
 	}
-	if atlas, err := LoadCJKAtlas(filepath.Join(dir, "cjk24.bin")); err == nil {
-		a.Font = atlas
-	}
-	for _, name := range freeIniNames {
-		if ini, err := LoadFreeIni(filepath.Join(dir, "free", name+".ini")); err == nil {
-			a.Strings[name] = ini
+	if b, err := fs.ReadFile(fsys, "cjk24.bin"); err == nil {
+		if atlas, err := ParseCJKAtlas(b); err == nil {
+			a.Font = atlas
 		}
 	}
-	if wm, err := LoadWorldMap(filepath.Join(dir, "free", "land.org")); err == nil {
-		a.World = wm
+	for _, name := range freeIniNames {
+		if b, err := fs.ReadFile(fsys, "free/"+name+".ini"); err == nil {
+			a.Strings[name] = ParseFreeIni(b)
+		}
+	}
+	if b, err := fs.ReadFile(fsys, "free/land.org"); err == nil {
+		if wm, err := ParseWorldMap(b); err == nil {
+			a.World = wm
+		}
 	}
 	return a, nil
 }

@@ -3,6 +3,8 @@
 package app
 
 import (
+	"image/color"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
@@ -22,11 +24,15 @@ const (
 type Game struct {
 	mgr    *screen.Manager
 	assets *kbdata.Assets
+	boot   func() // 第一幀執行一次的初始化(建立 ebiten.Image 等需繪圖/JVM 就緒的工作)
+	booted bool
 }
 
-// New 建立遊戲迴圈,root 為起始畫面。
-func New(root screen.Screen, assets *kbdata.Assets) *Game {
-	return &Game{mgr: screen.NewManager(root), assets: assets}
+// New 建立遊戲迴圈,root 為起始畫面。boot 可為 nil;非 nil 時於「第一次 Draw」執行一次——
+// 用於行動裝置:ebiten 繪圖(如 tileset 建圖)不能在 init() 做(JVM 尚未 attach 會 panic
+// devicescale: no current JVM),必須延後到遊戲迴圈啟動後的第一幀。
+func New(root screen.Screen, assets *kbdata.Assets, boot func()) *Game {
+	return &Game{mgr: screen.NewManager(root), assets: assets, boot: boot}
 }
 
 func (g *Game) Update() error {
@@ -45,6 +51,13 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(dst *ebiten.Image) {
+	if !g.booted {
+		g.booted = true
+		if g.boot != nil {
+			g.boot() // JVM/繪圖已就緒,此時建 ebiten.Image 安全
+		}
+	}
+	dst.Fill(color.RGBA{18, 18, 32, 255}) // 深藍底:非全黑,亦供行動裝置縮放診斷
 	g.mgr.Draw(dst)
 	var font *kbdata.CJKAtlas
 	if g.assets != nil {

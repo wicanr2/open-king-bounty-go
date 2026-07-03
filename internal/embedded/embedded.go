@@ -13,6 +13,16 @@ import (
 //go:embed all:data
 var dataFS embed.FS
 
+// FS 回傳以 data/ 為根的唯讀檔案系統(路徑如 "cjk24.bin"、"free/troops.ini"),
+// 供 kbdata.LoadFS / render.LoadTilesetFS 直接讀,行動裝置免解壓到檔案系統(避開唯讀 cwd)。
+func FS() fs.FS {
+	sub, err := fs.Sub(dataFS, "data")
+	if err != nil {
+		return dataFS
+	}
+	return sub
+}
+
 // Extract 把嵌入資料寫到 destDir 下的 openkb-data/,回傳該路徑供 kbdata.Load 使用。
 // 冪等:已存在的檔跳過(適合 Android app 每次啟動呼叫)。
 func Extract(destDir string) (string, error) {

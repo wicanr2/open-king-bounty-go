@@ -49,7 +49,7 @@ func main() {
 
 	ebiten.SetWindowSize(app.LogicalW*3, app.LogicalH*3)
 	ebiten.SetWindowTitle("御封戰將 (openkb-go)")
-	if err := ebiten.RunGame(app.New(rootScreen(assets), assets)); err != nil {
+	if err := ebiten.RunGame(app.New(rootScreen(assets), assets, nil)); err != nil {
 		log.Fatal(err)
 	}
 }
