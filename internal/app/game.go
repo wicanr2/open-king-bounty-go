@@ -24,13 +24,15 @@ type Game struct {
 	assets *kbdata.Assets
 	boot   func() // 第一幀執行一次的初始化(建立 ebiten.Image 等需繪圖/JVM 就緒的工作)
 	booted bool
+	touch  bool // 是否繪製觸控疊層(僅行動裝置;桌面用鍵盤,畫了會污染「與 C 一模一樣」的內容區)
 }
 
 // New 建立遊戲迴圈,root 為起始畫面。boot 可為 nil;非 nil 時於「第一次 Draw」執行一次——
 // 用於行動裝置:ebiten 繪圖(如 tileset 建圖)不能在 init() 做(JVM 尚未 attach 會 panic
 // devicescale: no current JVM),必須延後到遊戲迴圈啟動後的第一幀。
-func New(root screen.Screen, assets *kbdata.Assets, boot func()) *Game {
-	return &Game{mgr: screen.NewManager(root), assets: assets, boot: boot}
+// touch 為 true 時才畫觸控控制疊層(Android);桌面傳 false 保持畫面與 C openkb 一致。
+func New(root screen.Screen, assets *kbdata.Assets, boot func(), touch bool) *Game {
+	return &Game{mgr: screen.NewManager(root), assets: assets, boot: boot, touch: touch}
 }
 
 func (g *Game) Update() error {
@@ -56,6 +58,9 @@ func (g *Game) Draw(dst *ebiten.Image) {
 		}
 	}
 	g.mgr.Draw(dst)
+	if !g.touch {
+		return // 桌面:不畫觸控疊層,內容區與 C openkb 一模一樣
+	}
 	var font *kbdata.CJKAtlas
 	if g.assets != nil {
 		font = g.assets.Font

@@ -41,7 +41,7 @@ func init() {
 	}
 
 	// SetGame 讓 ebitenmobile 生成的 Java/Kotlin 綁定驅動這顆遊戲迴圈。
-	mobile.SetGame(app.New(screen.NewTitleScreen(assets), assets, boot))
+	mobile.SetGame(app.New(screen.NewTitleScreen(assets), assets, boot, true))
 }
 
 // Dummy is a placeholder so gomobile bind sees at least one exported symbol.
