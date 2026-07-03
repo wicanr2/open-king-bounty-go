@@ -91,10 +91,9 @@ func (s *CharSelectScreen) Draw(dst *ebiten.Image) {
 }
 
 func (s *CharSelectScreen) Keymap() input.Keymap {
+	// 對齊 C:純字母鍵直選(無方向鍵瀏覽/高亮),故不設 Directions;觸控只出 A-D 職業鈕。
 	return input.Keymap{
-		Directions: true,
-		Confirm:    "選擇",
-		Cancel:     "返回",
+		Cancel: "返回",
 		Letters: []input.LetterItem{
 			{Rune: 'a', Label: "騎士"}, {Rune: 'b', Label: "遊俠"},
 			{Rune: 'c', Label: "女巫師"}, {Rune: 'd', Label: "蠻俠"},
