@@ -86,7 +86,7 @@ func pollAction() input.Action {
 func rootScreen(a *kbdata.Assets) screen.Screen {
 	if *startClass >= 0 && *startClass < 4 {
 		gs := gamestate.NewGame(a, "Sir Loin", *startClass)
-		return screen.NewInGameScreen(gs, a)
+		return screen.NewWorldMapScreen(gs, a)
 	}
 	return screen.NewTitleScreen(a)
 }

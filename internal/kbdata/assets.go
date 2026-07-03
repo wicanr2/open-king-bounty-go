@@ -81,12 +81,13 @@ type Assets struct {
 	Classes [4][4]Class         // 由 tables_classes.go 提供
 	Font    *CJKAtlas           // cjk24.bin 點陣字(nil = 未載入)
 	Strings map[string]*FreeIni // free *.ini,key 為檔名去副檔名(troops/spells/…)
+	World   *WorldMap           // land.org 世界地圖(nil = 未載入)
 
 	// 起手資源(索引 = 職業),移植自 bounty.c;供 gamestate 建角使用。
 	StartGold      [4]int    // 各職業起手金
 	StartArmyTroop [4][2]int // 各職業起手兩格兵種 id(0xFF = 空)
 	StartArmyCount [4][2]int // 對應數量
-	// TODO(P2+): Tiles、Map(land.org)由各 loader 填入。
+	// TODO(P2+): Tiles(tileset 美術)由 render 層填入。
 }
 
 // freeIniNames 是 Load 會嘗試載入的 free 資料清單(缺檔不致命)。
@@ -114,6 +115,9 @@ func Load(dir string) (*Assets, error) {
 		if ini, err := LoadFreeIni(filepath.Join(dir, "free", name+".ini")); err == nil {
 			a.Strings[name] = ini
 		}
+	}
+	if wm, err := LoadWorldMap(filepath.Join(dir, "free", "land.org")); err == nil {
+		a.World = wm
 	}
 	return a, nil
 }

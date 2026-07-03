@@ -19,3 +19,6 @@
 /testdata/oracle/*.raw
 /dist/
 /.scratch/
+
+# go build ./cmd/openkb 未加 -o 時的產物
+/openkb

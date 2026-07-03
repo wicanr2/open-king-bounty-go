@@ -48,10 +48,10 @@ func (s *CharSelectScreen) Update(a input.Action) Transition {
 	return Stay()
 }
 
-// start 用選定職業建角,進遊戲中畫面。
+// start 用選定職業建角,進世界地圖。
 func (s *CharSelectScreen) start(class int) Transition {
 	gs := gamestate.NewGame(s.assets, "Sir Loin", class)
-	return Replace(NewInGameScreen(gs, s.assets))
+	return Replace(NewWorldMapScreen(gs, s.assets))
 }
 
 func (s *CharSelectScreen) Draw(dst *ebiten.Image) {
