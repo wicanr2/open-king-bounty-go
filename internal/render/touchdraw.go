@@ -16,6 +16,9 @@ import (
 // font 可為 nil(只畫框 + ASCII 標籤)。
 func DrawTouchControls(dst *ebiten.Image, controls []input.Control, font *kbdata.CJKAtlas) {
 	for _, c := range controls {
+		if c.Hidden {
+			continue // 隱形熱區(如城鎮選單行):只作點擊命中,不畫按鈕,避免蓋住選單文字
+		}
 		x, y := float32(c.Rect.X), float32(c.Rect.Y)
 		w, h := float32(c.Rect.W), float32(c.Rect.H)
 		vector.DrawFilledRect(dst, x, y, w, h, color.RGBA{20, 20, 30, 150}, false) // 半透明底

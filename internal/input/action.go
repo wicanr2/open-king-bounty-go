@@ -17,25 +17,25 @@ package input
 type ActionKind uint8
 
 const (
-	ActNone     ActionKind = iota
-	ActUp                  // 方向:上(地圖移動 / 清單上移 / 戰鬥走位)
-	ActDown                // 方向:下
-	ActLeft                // 方向:左
-	ActRight               // 方向:右
-	ActConfirm             // 確認 / 繼續(鍵盤 Enter・Space;觸控 A 鈕)
-	ActCancel              // 返回 / 取消(鍵盤 ESC;觸控 B 鈕)
-	ActLetter              // 字母快捷(選單 A–E、選角 A–D…);字元放 Rune
-	ActDigit               // 數字(招募數量、難度…);字元放 Rune('0'..'9')
-	ActYes                 // 是(Y)
-	ActNo                  // 否(N)
-	ActPageUp              // 清單上一頁
-	ActPageDown            // 清單下一頁
-	ActHome                // 清單頂
-	ActEnd                 // 清單底
-	ActMenu                // 系統選單(觸控右上 ☰)
-	ActThemeCycle          // 切美術主題(F8)
-	ActMusicToggle         // 切音樂(F9)
-	ActQuitSave            // 存檔離開(F10)
+	ActNone        ActionKind = iota
+	ActUp                     // 方向:上(地圖移動 / 清單上移 / 戰鬥走位)
+	ActDown                   // 方向:下
+	ActLeft                   // 方向:左
+	ActRight                  // 方向:右
+	ActConfirm                // 確認 / 繼續(鍵盤 Enter・Space;觸控 A 鈕)
+	ActCancel                 // 返回 / 取消(鍵盤 ESC;觸控 B 鈕)
+	ActLetter                 // 字母快捷(選單 A–E、選角 A–D…);字元放 Rune
+	ActDigit                  // 數字(招募數量、難度…);字元放 Rune('0'..'9')
+	ActYes                    // 是(Y)
+	ActNo                     // 否(N)
+	ActPageUp                 // 清單上一頁
+	ActPageDown               // 清單下一頁
+	ActHome                   // 清單頂
+	ActEnd                    // 清單底
+	ActMenu                   // 系統選單(觸控右上 ☰)
+	ActThemeCycle             // 切美術主題(F8)
+	ActMusicToggle            // 切音樂(F9)
+	ActQuitSave               // 存檔離開(F10)
 )
 
 // Action 是一次語義輸入。Letter/Digit 用 Rune 帶實際字元,其餘 Rune 為 0。
@@ -73,12 +73,15 @@ type LetterItem struct {
 // 用法:每個 screen 提供一個 CurrentKeymap() Keymap;畫面切換時控制列自動跟著換,
 // 不會有一堆無用按鈕擋畫面(見 ui-design.md「情境快捷列」)。
 type Keymap struct {
-	Directions bool         // D-pad 相關(地圖移動 / 清單 / 戰鬥走位)
-	Confirm    string       // A 鈕標籤;"" = 不接受確認
-	Cancel     string       // B 鈕標籤;"" = 不接受取消
-	Letters    []LetterItem // 情境字母列(選單項);空 = 無
-	Digits     bool         // 數字步進器相關(數量輸入)
-	YesNo      bool         // 是非兩鈕
-	Scroll     bool         // 清單捲動(PageUp/Down)
-	System     []Action     // 收進 ☰ 的系統項(F8/F9/F10…)
+	Directions  bool         // D-pad 相關(地圖移動 / 清單 / 戰鬥走位)
+	Confirm     string       // A 鈕標籤;"" = 不接受確認
+	Cancel      string       // B 鈕標籤;"" = 不接受取消
+	Letters     []LetterItem // 情境字母列(選單項);空 = 無
+	LetterRects []Rect       // 選填:各字母選項的觸控熱區矩形。提供時,字母熱區改用這些
+	//               矩形且設為隱形(疊在畫面既有選單文字行上,不另畫按鈕列),長度
+	//               應對齊 Letters;不提供則字母走預設的下方可見按鈕列。
+	Digits bool     // 數字步進器相關(數量輸入)
+	YesNo  bool     // 是非兩鈕
+	Scroll bool     // 清單捲動(PageUp/Down)
+	System []Action // 收進 ☰ 的系統項(F8/F9/F10…)
 }

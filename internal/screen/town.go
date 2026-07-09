@@ -17,10 +17,10 @@ import (
 type townMode int
 
 const (
-	townModeMenu       townMode = iota // 只顯示 A-E 選單
-	townModeInfo                       // C) 蒐集情報:疊顯既有 GameState 數值(GOLD/LEADERSHIP)
-	townModeStub                       // A/B/E:需世界狀態,先顯示「未實作」提示
-	townModeLearnResult                // D) 學習法術:顯示結果訊息(對齊 C msg_hold 三種分支)
+	townModeMenu        townMode = iota // 只顯示 A-E 選單
+	townModeInfo                        // C) 蒐集情報:疊顯既有 GameState 數值(GOLD/LEADERSHIP)
+	townModeStub                        // A/B/E:需世界狀態,先顯示「未實作」提示
+	townModeLearnResult                 // D) 學習法術:顯示結果訊息(對齊 C msg_hold 三種分支)
 )
 
 // 世界狀態尚未建模的固定值,對應 C bounty.h 的常數;等 GameState 補上對應欄位
@@ -238,10 +238,31 @@ func (s *TownScreen) infoLines() []string {
 }
 
 func (s *TownScreen) Keymap() input.Keymap {
+	// 城鎮是選單畫面,不需要移動 D-pad(Directions:false),避免觸控 D-pad 蓋住
+	// 底部 A-E 選單文字;字母選項的觸控熱區直接疊在選單各行原位(letterRects),
+	// 由選單文字本身當視覺、點該行即選該項,對齊 C 選單的乾淨外觀。
 	return input.Keymap{
-		Directions: true,
-		Confirm:    "選擇",
-		Cancel:     "離開",
-		Letters:    townLetters,
+		Directions:  false,
+		Confirm:     "選擇",
+		Cancel:      "離開",
+		Letters:     townLetters,
+		LetterRects: townLetterRects(),
 	}
+}
+
+// townLetterRects 回傳 A-E 五個選項各自在底部選單框的文字行矩形(觸控熱區)。
+// A-E 對應 menuLines() 的索引 2..6,行位置與 drawBottomFrame 的排版一致
+// (第 n 行 y = bottomHeaderY + n*render.CJKCell)。
+func townLetterRects() []input.Rect {
+	rects := make([]input.Rect, len(townLetters))
+	for i := range townLetters {
+		line := 2 + i // menuLines 索引:0=鎮名 1=GP 2=A … 6=E
+		rects[i] = input.Rect{
+			X: bottomTextX,
+			Y: bottomHeaderY + line*render.CJKCell,
+			W: bottomBorderW - 2*render.CJKCell,
+			H: render.CJKCell,
+		}
+	}
+	return rects
 }

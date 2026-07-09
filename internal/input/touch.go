@@ -19,10 +19,14 @@ func (r Rect) Contains(px, py int) bool {
 }
 
 // Control 是一顆浮出的觸控控制:矩形 + 點擊送出的 Action + 顯示標籤。
+// Hidden=true 時是「隱形熱區」:仍可被 Resolve 命中,但 DrawTouchControls 不畫它。
+// 用於選單型畫面(如城鎮),讓字母選項的點擊熱區直接疊在畫面既有的選單文字行上,
+// 由選單文字本身當視覺,不再另畫一排按鈕蓋住選單(對齊 C 選單的乾淨外觀)。
 type Control struct {
 	Rect   Rect
 	Action Action
 	Label  string
+	Hidden bool
 }
 
 // Tap 是一次觸控/點擊點(邏輯座標)。
@@ -43,30 +47,37 @@ func (t TouchLayout) Controls() []Control {
 
 	if t.km.Directions {
 		cs = append(cs,
-			Control{Rect{26, 150, 20, 16}, Action{Kind: ActUp}, "^"},
-			Control{Rect{26, 182, 20, 16}, Action{Kind: ActDown}, "v"},
-			Control{Rect{4, 166, 20, 16}, Action{Kind: ActLeft}, "<"},
-			Control{Rect{48, 166, 20, 16}, Action{Kind: ActRight}, ">"},
+			Control{Rect{26, 150, 20, 16}, Action{Kind: ActUp}, "^", false},
+			Control{Rect{26, 182, 20, 16}, Action{Kind: ActDown}, "v", false},
+			Control{Rect{4, 166, 20, 16}, Action{Kind: ActLeft}, "<", false},
+			Control{Rect{48, 166, 20, 16}, Action{Kind: ActRight}, ">", false},
 		)
 	}
 	if t.km.Confirm != "" {
-		cs = append(cs, Control{Rect{288, 168, 28, 22}, Action{Kind: ActConfirm}, t.km.Confirm})
+		cs = append(cs, Control{Rect{288, 168, 28, 22}, Action{Kind: ActConfirm}, t.km.Confirm, false})
 	}
 	if t.km.Cancel != "" {
-		cs = append(cs, Control{Rect{256, 168, 28, 22}, Action{Kind: ActCancel}, t.km.Cancel})
+		cs = append(cs, Control{Rect{256, 168, 28, 22}, Action{Kind: ActCancel}, t.km.Cancel, false})
 	}
-	// 情境字母列:下方中央一排,每顆 30 寬。
+	// 情境字母列。兩種佈局:
+	//   (a) 若 Keymap 提供 LetterRects(選單型畫面,如城鎮):字母熱區用畫面既有選單
+	//       各行的矩形,設 Hidden(不另畫按鈕),點選單那一行即選該項——對齊 C 選單。
+	//   (b) 否則(如選角):在下方中央排一排可見按鈕,每顆 30 寬。
 	for i, it := range t.km.Letters {
+		if i < len(t.km.LetterRects) {
+			cs = append(cs, Control{t.km.LetterRects[i], Letter(it.Rune), it.Label, true})
+			continue
+		}
 		x := 82 + i*32
 		if x+30 > screenW {
 			break // 超出畫面就不再排(避免擠出邊界)
 		}
-		cs = append(cs, Control{Rect{x, 150, 30, 20}, Letter(it.Rune), it.Label})
+		cs = append(cs, Control{Rect{x, 150, 30, 20}, Letter(it.Rune), it.Label, false})
 	}
 	if t.km.YesNo {
 		cs = append(cs,
-			Control{Rect{110, 150, 40, 20}, Action{Kind: ActYes}, "是"},
-			Control{Rect{170, 150, 40, 20}, Action{Kind: ActNo}, "否"},
+			Control{Rect{110, 150, 40, 20}, Action{Kind: ActYes}, "是", false},
+			Control{Rect{170, 150, 40, 20}, Action{Kind: ActNo}, "否", false},
 		)
 	}
 	return cs
