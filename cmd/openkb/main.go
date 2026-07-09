@@ -21,12 +21,17 @@ var (
 	startClass  = flag.Int("startclass", -1, "debug:>=0 直接以該職業建角進世界地圖(截圖驗證用)")
 	startCombat = flag.Bool("startcombat", false, "debug:直接切入一場戰鬥(截圖驗證用)")
 	startSelect = flag.Bool("startselect", false, "debug:直接進選角畫面(截圖驗證用)")
+	startTown   = flag.Bool("starttown", false, "debug:直接進城鎮畫面(截圖驗證用)")
 )
 
 func rootScreen(a *kbdata.Assets) screen.Screen {
 	if *startCombat {
 		gs := gamestate.NewGame(a, "Sir Loin", 0)
 		return screen.NewDebugCombatScreen(gs, a)
+	}
+	if *startTown {
+		gs := gamestate.NewGame(a, "Sir Loin", 0)
+		return screen.NewTownScreen(gs, a, 0)
 	}
 	if *startClass >= 0 && *startClass < 4 {
 		gs := gamestate.NewGame(a, "Sir Loin", *startClass)
@@ -79,6 +84,11 @@ func main() {
 		screen.SetComtiles(comtiles)
 	} else {
 		log.Printf("load comtiles: %v", err)
+	}
+	if art, err := render.LoadPNGTileNamed(*datadir, "town.png"); err == nil {
+		screen.SetLocation(art)
+	} else {
+		log.Printf("load town background: %v", err)
 	}
 	for id, name := range screen.TroopFileNames {
 		sp, err := render.LoadSprite(*datadir, name+".png", 48, 34)

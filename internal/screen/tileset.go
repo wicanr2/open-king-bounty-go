@@ -38,6 +38,14 @@ var selectArt *ebiten.Image
 // SetSelectArt 由進入點在載入資產後設定選角背景圖。
 func SetSelectArt(img *ebiten.Image) { selectArt = img }
 
+// townBackground 是城鎮畫面的整張背景美術(town.png,240×102,不透明,對齊 C 版
+// GR_LOCATION sub_id=1;free-data.c 該 case 不設 image_cutout,是整檔直接當一張
+// 圖用,不是逐幀 sprite sheet)。視覺上緊貼世界地圖 viewport 同一位置(mapX,mapY)。
+var townBackground *ebiten.Image
+
+// SetLocation 由進入點在載入資產後設定城鎮(GR_LOCATION)背景圖。
+func SetLocation(img *ebiten.Image) { townBackground = img }
+
 // titleArt 是開場標題整張美術(title.png,320×200 全螢幕,對齊 C 版 GR_TITLE /
 // display_title:黑底貼滿此圖,按任意鍵進選角)。
 var titleArt *ebiten.Image

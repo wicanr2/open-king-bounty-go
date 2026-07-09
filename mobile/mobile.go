@@ -63,6 +63,11 @@ func init() {
 		} else {
 			log.Printf("load comtiles: %v", err)
 		}
+		if art, err := render.LoadPNGTileFS(embedded.FS(), "free/town.png"); err == nil {
+			screen.SetLocation(art)
+		} else {
+			log.Printf("load town background: %v", err)
+		}
 		for id, name := range screen.TroopFileNames {
 			sp, err := render.LoadSpriteFS(embedded.FS(), "free/"+name+".png", 48, 34)
 			if err != nil {

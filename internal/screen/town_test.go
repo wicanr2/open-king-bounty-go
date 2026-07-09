@@ -16,7 +16,7 @@ func newTestTownScreen(t *testing.T) *TownScreen {
 		t.Fatalf("kbdata.Load: %v", err)
 	}
 	gs := gamestate.NewGame(a, "Tester", 0)
-	return NewTownScreen(gs, a)
+	return NewTownScreen(gs, a, 0)
 }
 
 // TestTownScreen_KeymapLetters 驗證情境字母列有 5 顆且標籤正確,對應 C 版
@@ -29,7 +29,7 @@ func TestTownScreen_KeymapLetters(t *testing.T) {
 		{Rune: 'a', Label: "接任務"},
 		{Rune: 'b', Label: "租船"},
 		{Rune: 'c', Label: "情報"},
-		{Rune: 'd', Label: "造橋"},
+		{Rune: 'd', Label: "學法術"},
 		{Rune: 'e', Label: "買攻城"},
 	}
 	if len(km.Letters) != len(want) {

@@ -73,6 +73,8 @@ type WorldMapScreen struct {
 	cont   int
 	px, py int    // 玩家在該洲的 tile 座標
 	msg    string // 存讀檔提示(「已存檔/已讀檔/無存檔」等),不計時,下次動作前持續顯示
+
+	drawTick int // Draw() 每次呼叫遞增(對齊 chrome.go drawSidebar 的 frame 節奏注解)
 }
 
 // NewWorldMapScreen 建立地圖畫面,玩家起點掃描該洲第一個草地格。
@@ -145,7 +147,14 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 	s.px, s.py = nx, ny
 	// 踩到城鎮 → 進城(疊上 TownScreen,離開後回地圖)
 	if tile == kbdata.TileTown {
-		return Push(NewTownScreen(s.gs, s.assets))
+		townID := 0
+		if s.assets != nil {
+			towns := gamestate.LoadTowns(s.assets)
+			if id := gamestate.FindTown(towns, s.cont, s.px, s.py); id >= 0 {
+				townID = id
+			}
+		}
+		return Push(NewTownScreen(s.gs, s.assets, townID))
 	}
 	// 踩到敵人 → 進戰鬥(疊上 CombatScreen,結束後回地圖)
 	if tile == kbdata.TileFoe {
@@ -259,7 +268,9 @@ func (s *WorldMapScreen) Draw(dst *ebiten.Image) {
 		vector.StrokeRect(dst, float32(heroX)+2, float32(heroY)+2, mapTileW-4, mapTileH-4, 2, color.RGBA{0, 230, 230, 255}, false)
 	}
 	s.drawStatusBar(dst)
-	s.drawSidebar(dst)
+	frame := (s.drawTick / townFrameDivisor) % 4
+	s.drawTick++
+	drawSidebar(dst, s.gs, frame)
 	if s.msg != "" && s.assets.Font != nil {
 		render.DrawText(dst, s.assets.Font, s.msg, mapX, mapY+perim*mapTileH-2, color.RGBA{240, 220, 40, 255})
 	}
@@ -277,43 +288,6 @@ func (s *WorldMapScreen) drawStatusBar(dst *ebiten.Image) {
 	}
 	text := fmt.Sprintf(" 選項 / 操作說明 / 剩餘天數:%d ", worldMapDaysLeft)
 	render.DrawText(dst, s.assets.Font, text, statusX, statusY, color.White)
-}
-
-// drawSidebar 畫右側資訊欄(對齊 C draw_sidebar,game.c:1119-1210):sidebar.png
-// 13 幀(48×34)由上而下堆疊在 map 右側(x=256,y=21 起):
-//
-//	幀8=合約框(暫無 contract 系統,恆顯示空框,不疊 villain 臉)
-//	幀9=攻城武器圖示(暫無欄位,恆顯示「未擁有」幀)
-//	幀10/4=魔法星:依 GameState.KnowsMagic,有魔法暫用靜態幀4(C 版是 tick+4 動畫)
-//	幀11=拼圖地圖框(靜態)
-//	幀12=錢袋 + coins.png 疊加金幣堆
-//
-// 素材未載入時退回舊版深色色塊,維持無資產環境仍可運作。
-func (s *WorldMapScreen) drawSidebar(dst *ebiten.Image) {
-	sx := mapX + perim*mapTileW // 256
-	if sidebarSprite == nil {
-		vector.DrawFilledRect(dst, float32(sx), 0, float32(320-sx), 200, color.RGBA{40, 30, 22, 255}, false)
-		return
-	}
-	knowsMagic := s.gs != nil && s.gs.KnowsMagic
-
-	y := mapY // 21,對齊地圖頂
-	sidebarSprite.DrawFrame(dst, 8, sx, y)
-	y += mapTileH
-	sidebarSprite.DrawFrame(dst, 9, sx, y)
-	y += mapTileH
-	if knowsMagic {
-		sidebarSprite.DrawFrame(dst, 4, sx, y)
-	} else {
-		sidebarSprite.DrawFrame(dst, 10, sx, y)
-	}
-	y += mapTileH
-	sidebarSprite.DrawFrame(dst, 11, sx, y)
-	y += mapTileH
-	sidebarSprite.DrawFrame(dst, 12, sx, y)
-	if s.gs != nil {
-		drawCoins(dst, sx, y, s.gs.Gold)
-	}
 }
 
 // drawCoins 依 C draw_sidebar 的金幣堆疊邏輯(game.c:1119+ cval 計算):三欄分別代表
