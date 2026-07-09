@@ -16,7 +16,7 @@ func newTestRecruitScreen(t *testing.T) (*RecruitScreen, *gamestate.GameState, *
 	if err != nil {
 		t.Fatalf("kbdata.Load: %v", err)
 	}
-	gs := gamestate.NewGame(a, "Tester", 0)
+	gs := gamestate.NewGame(a, "Tester", 0, gamestate.DefaultWorldSeed)
 	return NewRecruitScreen(gs, a, 0), gs, a
 }
 

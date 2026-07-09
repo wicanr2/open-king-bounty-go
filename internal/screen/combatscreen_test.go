@@ -15,7 +15,7 @@ func newTestCombatScreen(t *testing.T) *CombatScreen {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gs := gamestate.NewGame(a, "P", 0) // 騎士:義勇軍/弓箭手
+	gs := gamestate.NewGame(a, "P", 0, gamestate.DefaultWorldSeed) // 騎士:義勇軍/弓箭手
 	return NewDebugCombatScreen(gs, a)
 }
 

@@ -67,7 +67,7 @@ func (s *CharSelectScreen) Update(a input.Action) Transition {
 
 // start 用選定職業建角,進世界地圖。
 func (s *CharSelectScreen) start(class int) Transition {
-	gs := gamestate.NewGame(s.assets, "Sir Loin", class)
+	gs := gamestate.NewGame(s.assets, "Sir Loin", class, gamestate.DefaultWorldSeed)
 	return Replace(NewWorldMapScreen(gs, s.assets))
 }
 

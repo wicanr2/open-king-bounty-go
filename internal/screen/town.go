@@ -17,9 +17,10 @@ import (
 type townMode int
 
 const (
-	townModeMenu townMode = iota // 只顯示 A-E 選單
-	townModeInfo                 // C) 蒐集情報:疊顯既有 GameState 數值(GOLD/LEADERSHIP)
-	townModeStub                 // A/B/D/E:需世界狀態,先顯示「未實作」提示
+	townModeMenu       townMode = iota // 只顯示 A-E 選單
+	townModeInfo                       // C) 蒐集情報:疊顯既有 GameState 數值(GOLD/LEADERSHIP)
+	townModeStub                       // A/B/E:需世界狀態,先顯示「未實作」提示
+	townModeLearnResult                // D) 學習法術:顯示結果訊息(對齊 C msg_hold 三種分支)
 )
 
 // 世界狀態尚未建模的固定值,對應 C bounty.h 的常數;等 GameState 補上對應欄位
@@ -51,7 +52,9 @@ type TownScreen struct {
 	assets *kbdata.Assets
 
 	town  gamestate.Town  // 對齊 C town_names[id]/town_coords[id]
-	spell gamestate.Spell // town_spell[id] 對應的法術(名稱+售價),D 選項用
+	spell gamestate.Spell // gs.TownSpell[townID] 對應的法術(名稱+售價),D 選項用;
+	// 來源是 GameState.TownSpell(salt_spells 的 per-save 隨機結果),不是
+	// town.SpellID(towns.ini 靜態欄,26 鎮全為 7=造橋術,已不供實際邏輯使用)。
 
 	welcomeTroop int // 迎賓兵種(對齊 C `rand() % MAX_TROOPS`,建構時抽一次)
 	drawTick     int // Draw() 被呼叫的次數,驅動 0-3 動畫幀(見 chrome.go townFrameDivisor 注解)
@@ -59,6 +62,8 @@ type TownScreen struct {
 	sel  int      // 方向鍵目前高亮的選項(0-4,對應 townLetters 索引)
 	mode townMode // 目前顯示的子畫面
 	stub string   // townModeStub 時顯示的項目標籤
+
+	learnMsg []string // townModeLearnResult 時顯示的結果訊息(見 learnSpell)
 }
 
 // NewTownScreen 建立城鎮畫面。townID 是 gamestate.Town 的索引(對應 C 版
@@ -72,8 +77,12 @@ func NewTownScreen(gs *gamestate.GameState, a *kbdata.Assets, townID int) *TownS
 		ts.town = towns[townID]
 	}
 	spells := gamestate.LoadSpells(a)
-	if ts.town.SpellID >= 0 && ts.town.SpellID < len(spells) {
-		ts.spell = spells[ts.town.SpellID]
+	spellID := -1
+	if gs != nil && townID >= 0 && townID < len(gs.TownSpell) {
+		spellID = gs.TownSpell[townID]
+	}
+	if spellID >= 0 && spellID < len(spells) {
+		ts.spell = spells[spellID]
 	}
 	ts.welcomeTroop = rand.Intn(len(TroopFileNames))
 	return ts
@@ -102,18 +111,45 @@ func (s *TownScreen) Update(a input.Action) Transition {
 }
 
 // activate 觸發第 idx 個選單項(0=A..4=E),對應 C 版 key==1..5 分支。
-// C(情報,idx==2)切到情報顯示;其餘項先切到「未實作」提示。
+// C(情報,idx==2)切到情報顯示;D(學法術,idx==3)呼叫 learnSpell;其餘項
+// (A/B/E)先切到「未實作」提示(需世界狀態:contract/boat/siege)。
 func (s *TownScreen) activate(idx int) {
 	if idx < 0 || idx >= len(townLetters) {
 		return
 	}
 	s.sel = idx
-	if townLetters[idx].Rune == 'c' {
+	switch townLetters[idx].Rune {
+	case 'c':
 		s.mode = townModeInfo
+	case 'd':
+		s.learnSpell()
+	default:
+		s.mode = townModeStub
+		s.stub = townLetters[idx].Label
+	}
+}
+
+// learnSpell 對齊 C visit_town() key==4 分支(game.c:2807-2827):呼叫
+// gamestate.GameState.LearnSpell,依結果切到對應提示文字(三種分支逐句對齊 C:
+// 已達上限 / 金幣不足 / 成功後告知還可再學幾個)。
+func (s *TownScreen) learnSpell() {
+	s.mode = townModeLearnResult
+	if s.gs == nil {
+		s.learnMsg = []string{"尚未實作: " + townLetters[3].Label}
 		return
 	}
-	s.mode = townModeStub
-	s.stub = townLetters[idx].Label
+	err := s.gs.LearnSpell(s.spell.ID, s.spell.Gold)
+	switch err {
+	case gamestate.ErrSpellLimitReached:
+		s.learnMsg = []string{"你已學會", "上限數量的法術。"}
+	case gamestate.ErrNotEnoughGold:
+		s.learnMsg = []string{"你的金幣不足！"}
+	case nil:
+		left := s.gs.MaxSpells - s.gs.KnownSpells()
+		s.learnMsg = []string{fmt.Sprintf("你還可以再學習 %d 個法術。", left)}
+	default:
+		s.learnMsg = []string{"學習失敗"}
+	}
 }
 
 func (s *TownScreen) Draw(dst *ebiten.Image) {
@@ -133,6 +169,8 @@ func (s *TownScreen) Draw(dst *ebiten.Image) {
 		drawBottomFrame(dst, s.assets, s.infoLines())
 	case townModeStub:
 		drawBottomFrame(dst, s.assets, []string{"尚未實作: " + s.stub})
+	case townModeLearnResult:
+		drawBottomFrame(dst, s.assets, s.learnMsg)
 	default:
 		drawBottomFrame(dst, s.assets, s.menuLines())
 	}

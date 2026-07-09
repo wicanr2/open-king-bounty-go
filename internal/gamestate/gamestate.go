@@ -32,4 +32,17 @@ type GameState struct {
 	Army [5]Squad // 隊伍五格(C: player_troops[5] + player_numbers[5] 兩個 parallel array 合併)
 
 	Week int // 已過週數;end_week 每次遞增,用於「每 4 週補農夫」判定(C: week_id = passed_days/WEEK_DAYS)
+
+	// TownSpell 是「第 N 鎮教哪個法術」的 per-save 隨機分配,對應 C 版
+	// byte town_spell[MAX_TOWNS](bounty.h:128),由 salt_spells(play.c:336)在
+	// NewGame 建遊戲時填好(見 townspell.go)。索引與 gamestate.Town.ID(town_coords[]
+	// 順序)一致;值域 0..maxSpells-1,查 kbdata 對應法術用 LoadSpells(a)[TownSpell[id]]。
+	// 注意:這**不是** towns.ini 的靜態 `spell` 欄(那是 Town.SpellID,建置期常數、
+	// 26 鎮全填 7=造橋術,現已不供實際遊戲邏輯使用,只保留供 ini 內容溯源)。
+	TownSpell [maxTowns]int
+
+	// Spells 是玩家已學會的法術計數,對應 C 版 byte spells[MAX_SPELLS](bounty.h:123);
+	// 索引 = 法術 id(0..maxSpells-1),值 = 該法術學會次數(C 允許同一法術重複學習,
+	// 見 known_spells() 加總所有格,LearnSpell 每次呼叫只 ++ 一格,不做上限鉗制)。
+	Spells [maxSpells]int
 }

@@ -18,7 +18,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 		t.Fatalf("kbdata.Load: %v", err)
 	}
 
-	gs := gamestate.NewGame(a, "測試騎士", 0)
+	gs := gamestate.NewGame(a, "測試騎士", 0, gamestate.DefaultWorldSeed)
 	gs.Week = 3 // 讓 round-trip 也覆蓋非起手值(避免欄位剛好等於零值而測不出漏傳)
 
 	path := filepath.Join(t.TempDir(), "slot0.json")

@@ -1,6 +1,14 @@
 package gamestate
 
-import "github.com/wicanr2/open-king-bounty-go/internal/kbdata"
+import (
+	"errors"
+
+	"github.com/wicanr2/open-king-bounty-go/internal/kbdata"
+)
+
+// ErrSpellLimitReached:法術數已達上限(對應 C visit_town() key==4 分支
+// known_spells(game) >= game->max_spells 那個判斷,game.c:2809)。
+var ErrSpellLimitReached = errors.New("已達法術上限")
 
 // maxSpells 對齊 C 版 MAX_SPELLS(bounty.h:43,`7 * 2`)。
 const maxSpells = 14
@@ -94,4 +102,41 @@ func LoadSpells(a *kbdata.Assets) []Spell {
 		sp.Combat = sp.IsCombat()
 	}
 	return spells
+}
+
+// KnownSpells 回傳玩家目前已學會的法術總數,對應 C known_spells(play.c:661):
+// 把 Spells[] 所有格加總(允許同一法術學會多次,逐格計數而非布林已學/未學)。
+func (gs *GameState) KnownSpells() int {
+	total := 0
+	for _, c := range gs.Spells {
+		total += c
+	}
+	return total
+}
+
+// LearnSpell 在城鎮購買/學習一個法術,對應 C visit_town() key==4 分支
+// (game.c:2807-2827)。呼叫端(TownScreen)已用 gs.TownSpell[townID] 查出
+// spellID、用 kbdata spells.ini 查出 cost,故這裡直接吃兩個已解析的值,不重複
+// 解析資料 —— 對照組是 BuyTroop(army.go)吃 *kbdata.Assets 現查 troop cost,
+// 兩者取用資料的方式不同是因為呼叫端(town.go)本來就已經持有這兩個值
+// (NewTownScreen 建構時就查好 s.spell),沒有必要在 gamestate 側重複 LoadSpells。
+//
+// 判斷順序逐一對齊 C(不可調換):
+//  1. known_spells(game) >= game->max_spells → ErrSpellLimitReached
+//     (「你已學會上限數量的法術」)。
+//  2. game->gold <= cost → ErrNotEnoughGold(「你的金幣不足」)。注意是 <=,
+//     金幣剛好等於價格也算不足,需嚴格大於才能購買。
+//  3. 否則:該法術 ++、扣錢,回 nil。
+func (gs *GameState) LearnSpell(spellID, cost int) error {
+	if gs.KnownSpells() >= gs.MaxSpells {
+		return ErrSpellLimitReached
+	}
+	if gs.Gold <= cost {
+		return ErrNotEnoughGold
+	}
+	if spellID >= 0 && spellID < len(gs.Spells) {
+		gs.Spells[spellID]++
+	}
+	gs.Gold -= cost
+	return nil
 }

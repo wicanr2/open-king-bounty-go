@@ -52,7 +52,7 @@ func TestNewGame_GoldenSamples(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gs := NewGame(a, "測試角色", tt.class)
+			gs := NewGame(a, "測試角色", tt.class, DefaultWorldSeed)
 
 			if gs.Class != tt.class {
 				t.Errorf("Class: got %d, want %d", gs.Class, tt.class)
@@ -93,7 +93,7 @@ func TestNewGame_SorceressKnowsMagic(t *testing.T) {
 	}
 
 	for class := 0; class < 4; class++ {
-		gs := NewGame(a, "測試角色", class)
+		gs := NewGame(a, "測試角色", class, DefaultWorldSeed)
 		want := class == 2
 		if gs.KnowsMagic != want {
 			t.Errorf("class %d KnowsMagic: got %v, want %v", class, gs.KnowsMagic, want)

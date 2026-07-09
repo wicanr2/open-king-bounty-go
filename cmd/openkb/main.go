@@ -22,19 +22,21 @@ var (
 	startCombat = flag.Bool("startcombat", false, "debug:直接切入一場戰鬥(截圖驗證用)")
 	startSelect = flag.Bool("startselect", false, "debug:直接進選角畫面(截圖驗證用)")
 	startTown   = flag.Bool("starttown", false, "debug:直接進城鎮畫面(截圖驗證用)")
+	townID      = flag.Int("townid", 0, "debug:配合 -starttown,指定要進哪個鎮(0-25,對應 gamestate.Town.ID)")
+	worldSeed   = flag.Uint("seed", uint(gamestate.DefaultWorldSeed), "debug:配合 -starttown/-startclass,指定 salt_spells 等世界生成用的 RNG seed")
 )
 
 func rootScreen(a *kbdata.Assets) screen.Screen {
 	if *startCombat {
-		gs := gamestate.NewGame(a, "Sir Loin", 0)
+		gs := gamestate.NewGame(a, "Sir Loin", 0, gamestate.DefaultWorldSeed)
 		return screen.NewDebugCombatScreen(gs, a)
 	}
 	if *startTown {
-		gs := gamestate.NewGame(a, "Sir Loin", 0)
-		return screen.NewTownScreen(gs, a, 0)
+		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
+		return screen.NewTownScreen(gs, a, *townID)
 	}
 	if *startClass >= 0 && *startClass < 4 {
-		gs := gamestate.NewGame(a, "Sir Loin", *startClass)
+		gs := gamestate.NewGame(a, "Sir Loin", *startClass, gamestate.DefaultWorldSeed)
 		return screen.NewWorldMapScreen(gs, a)
 	}
 	if *startSelect {

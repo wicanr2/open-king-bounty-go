@@ -24,7 +24,7 @@ func loadAssets(t *testing.T) *kbdata.Assets {
 // 晉升逐階累加(騎士):base_leadership 100→200→500→1000;commission 1000→2000→4000→8000。
 func TestPromote_KnightAccumulates(t *testing.T) {
 	a := loadAssets(t)
-	gs := NewGame(a, "K", 0)
+	gs := NewGame(a, "K", 0, DefaultWorldSeed)
 
 	wantLead := []int{200, 500, 1000, 1000} // 第 4 次已達最高階,不再變
 	wantComm := []int{2000, 4000, 8000, 8000}
@@ -45,7 +45,7 @@ func TestPromote_KnightAccumulates(t *testing.T) {
 // issue #5 回歸:寶箱領導力加成過週不流失(EndWeek 把 Leadership 重設回含加成的 BaseLeadership)。
 func TestChestLeadership_SurvivesEndWeek(t *testing.T) {
 	a := loadAssets(t)
-	gs := NewGame(a, "K", 0) // 騎士 base=lead=100
+	gs := NewGame(a, "K", 0, DefaultWorldSeed) // 騎士 base=lead=100
 	if gs.BaseLeadership != 100 || gs.Leadership != 100 {
 		t.Fatalf("起手應 base=lead=100, got base=%d lead=%d", gs.BaseLeadership, gs.Leadership)
 	}
@@ -67,7 +67,7 @@ func TestChestLeadership_SurvivesEndWeek(t *testing.T) {
 // 寶箱 + 升階疊加:證明採「增量 +=」模型(若誤用賦值絕對值會清掉寶箱 → 200)。
 func TestChestThenPromote_Stacks(t *testing.T) {
 	a := loadAssets(t)
-	gs := NewGame(a, "K", 0) // base 100
+	gs := NewGame(a, "K", 0, DefaultWorldSeed) // base 100
 	gs.AddChestLeadership(50) // base 150
 	gs.Promote(a)             // rank1 增量 +100 → 250(非賦值 200)
 	if gs.BaseLeadership != 250 {
@@ -78,7 +78,7 @@ func TestChestThenPromote_Stacks(t *testing.T) {
 // 女巫師的 knows_magic 升階後仍為真(增量累加後恆 1)。
 func TestSorceressKnowsMagic_PersistsAcrossPromote(t *testing.T) {
 	a := loadAssets(t)
-	gs := NewGame(a, "S", 2) // 女巫師
+	gs := NewGame(a, "S", 2, DefaultWorldSeed) // 女巫師
 	if !gs.KnowsMagic {
 		t.Fatal("女巫師起手應會魔法")
 	}
@@ -91,7 +91,7 @@ func TestSorceressKnowsMagic_PersistsAcrossPromote(t *testing.T) {
 // 招兵:金錢檢查、扣款、空格合併。
 func TestBuyTroop(t *testing.T) {
 	a := loadAssets(t)
-	gs := NewGame(a, "K", 0) // 騎士 gold 7500,隊伍 [義勇軍x20, 弓箭手x2]
+	gs := NewGame(a, "K", 0, DefaultWorldSeed) // 騎士 gold 7500,隊伍 [義勇軍x20, 弓箭手x2]
 	startGold := gs.Gold
 
 	// 農夫(id 0,GoldCost 10)x10 = 100 金 → 進第一個空格(slot 2)
@@ -115,7 +115,7 @@ func TestBuyTroop(t *testing.T) {
 
 func TestBuyTroop_NotEnoughGold(t *testing.T) {
 	a := loadAssets(t)
-	gs := NewGame(a, "K", 0)
+	gs := NewGame(a, "K", 0, DefaultWorldSeed)
 	gs.Gold = 5
 	// 農夫 x1 = 10 金 > 5
 	if err := gs.BuyTroop(a, 0, 1); err != ErrNotEnoughGold {
@@ -129,7 +129,7 @@ func TestBuyTroop_NotEnoughGold(t *testing.T) {
 // 領導力上限:剩餘領導力 / 每隻 HP。
 func TestArmyMaxTroopCount(t *testing.T) {
 	a := loadAssets(t)
-	gs := NewGame(a, "K", 0) // leadership 100
+	gs := NewGame(a, "K", 0, DefaultWorldSeed) // leadership 100
 	// 農夫 HP=1 → 空隊時可放 100 隻(尚無農夫佔用)
 	if got := gs.ArmyMaxTroopCount(a, 0); got != 100 {
 		t.Errorf("農夫上限 got %d, want 100", got)
@@ -139,7 +139,7 @@ func TestArmyMaxTroopCount(t *testing.T) {
 // 每週結算:領導力重設、俸祿入帳、維護費扣除。
 func TestEndWeek_LeadershipResetAndCommission(t *testing.T) {
 	a := loadAssets(t)
-	gs := NewGame(a, "K", 0) // gold 7500, commission 1000, lead 100
+	gs := NewGame(a, "K", 0, DefaultWorldSeed) // gold 7500, commission 1000, lead 100
 	// 消耗一些當前領導力語意上不改 base;直接改 Leadership 模擬戰損後
 	gs.Leadership = 40
 	goldBefore := gs.Gold

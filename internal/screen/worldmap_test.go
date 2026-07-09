@@ -20,7 +20,7 @@ func newTestWorldMapScreen(t *testing.T) (*WorldMapScreen, *gamestate.GameState,
 	if err != nil {
 		t.Fatalf("kbdata.Load: %v", err)
 	}
-	gs := gamestate.NewGame(a, "Tester", 0)
+	gs := gamestate.NewGame(a, "Tester", 0, gamestate.DefaultWorldSeed)
 	return NewWorldMapScreen(gs, a), gs, a
 }
 
