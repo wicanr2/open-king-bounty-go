@@ -42,6 +42,19 @@ const (
 	mapY     = 21
 	perim    = 5 // 240/48 = 170/34 = 5(5×5 viewport)
 	radii    = 2 // (perim-1)/2:玩家置中,每邊 2 格
+
+	// 玩家起點,對齊 C spawn_game(play.c:403-405):
+	//   continent = special_coords[SP_HOME][0]
+	//   x         = special_coords[SP_HOME][1]
+	//   y         = special_coords[SP_HOME][2] - 2
+	// ★ 注意:bounty.c 的 special_coords 是 DOS 地圖硬編值(11,7),但 free 模組會用
+	//   data/free/land.ini [special0]「國王的居所」覆寫(game.c:299-301 KB_Resolve),
+	//   free 真值 = (continent 0, x 15, y 10)。本移植是 free 版,故用 free 的家座標。
+	//   px/py 與 C game->x/y 同一座標系(Y-flip 只在渲染,不影響資料座標),直接用。
+	// TODO: 改成解析 land.ini [special0] 載入(現先硬編 free 值,免另建 parser)。
+	homeContinent = 0  // land.ini [special0] continent
+	homeStartX    = 15 // land.ini [special0] x
+	homeStartY    = 8  // land.ini [special0] y(10) - 2
 )
 
 // 頂部狀態列(對齊 C update_ui_frames:local.status.x/y = left_frame.w/top_frame.h,
@@ -79,23 +92,10 @@ type WorldMapScreen struct {
 
 // NewWorldMapScreen 建立地圖畫面,玩家起點掃描該洲第一個草地格。
 func NewWorldMapScreen(gs *gamestate.GameState, a *kbdata.Assets) *WorldMapScreen {
-	s := &WorldMapScreen{gs: gs, assets: a, cont: 0, px: 32, py: 32}
-	if a != nil && a.World != nil {
-		s.px, s.py = findStart(a.World, 0)
-	}
+	// 起點對齊 C spawn_game 的 home castle 座標(homeContinent/homeStartX/homeStartY),
+	// 不再用 findStart 的「第一格草地」佔位。
+	s := &WorldMapScreen{gs: gs, assets: a, cont: homeContinent, px: homeStartX, py: homeStartY}
 	return s
-}
-
-// findStart 掃描該洲找第一個草地格當起點(暫代,真起點在 land.ini 未解析)。
-func findStart(m *kbdata.WorldMap, cont int) (int, int) {
-	for y := 0; y < kbdata.LevelH; y++ {
-		for x := 0; x < kbdata.LevelW; x++ {
-			if kbdata.IsGrass(m.Tile(cont, x, y)) {
-				return x, y
-			}
-		}
-	}
-	return 32, 32
 }
 
 // walkable 回報玩家能否踏上該 tile(水/深水/山阻擋;陸地與互動格可走)。
