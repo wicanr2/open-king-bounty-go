@@ -11,6 +11,11 @@
 /assets/genesis/
 /assets/amiga/
 /assets/fmtowns/
+# 版權美術主題(embed 打包用,本機 build 才有;公開 repo 只帶 free)。沿用 C 版已抽出的 PNG。
+/internal/embedded/data/dos/
+/internal/embedded/data/genesis/
+/internal/embedded/data/amiga/
+/internal/embedded/data/fmtowns/
 *.CC
 *.ROM
 *.rom

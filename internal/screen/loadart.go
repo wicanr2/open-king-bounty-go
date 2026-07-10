@@ -32,10 +32,23 @@ var locationBgFiles = []struct {
 	{5, "dngn.png"},
 }
 
-// LoadArt 從 fsys 的 dir 目錄載入整套美術並灌進全域 setter(tileset + 所有 sprite + UI)。
-// dir 是美術模組名。桌面傳 os.DirFS(datadir),行動傳 embed.FS。必須在遊戲迴圈啟動後
-// (繪圖就緒)呼叫。best-effort:個別檔缺就 log 跳過,不中斷。
+// baseTheme 是缺檔回退來源:任何主題缺的美術檔一律用 free 補(free 恆為完整開放集)。
+const baseTheme = "free"
+
+// LoadArt 載入 dir 主題的整套美術到全域 setter。先鋪 free 當底(保證每個 asset 都有),
+// 再用 dir 主題覆蓋——版權主題(DOS/Genesis/Amiga)若某些 UI 小件沒抽到,就自動沿用
+// free 的那件,避免切換後殘留前一主題或空白。dir=="free" 時只鋪一次。
+// 桌面傳 os.DirFS(datadir),行動傳 embed.FS。必須在遊戲迴圈啟動後(繪圖就緒)呼叫。
 func LoadArt(fsys fs.FS, dir string) {
+	loadArtDir(fsys, baseTheme)
+	if dir != baseTheme {
+		loadArtDir(fsys, dir)
+	}
+}
+
+// loadArtDir 從 fsys 的 dir 目錄載入整套美術並灌進全域 setter(tileset + 所有 sprite + UI)。
+// best-effort:個別檔缺就 log 跳過(由 LoadArt 的 free 底層補),不中斷。
+func loadArtDir(fsys fs.FS, dir string) {
 	p := dir + "/"
 
 	if ts, err := render.LoadTilesetFS(fsys, dir); err == nil {
@@ -133,18 +146,25 @@ var (
 // 載入第一個存在者當預設,並記住狀態供之後 CycleTheme。回傳選中的模組名("" = 都不存在)。
 func InitThemes(fsys fs.FS, order []string) string {
 	themeFS = fsys
-	themeMods = themeMods[:0]
-	for _, m := range order {
-		if themeExists(fsys, m) {
-			themeMods = append(themeMods, m)
-		}
-	}
+	themeMods = resolveThemes(fsys, order)
 	themeActive = 0
 	if len(themeMods) == 0 {
 		return ""
 	}
 	LoadArt(fsys, themeMods[themeActive])
 	return themeMods[themeActive]
+}
+
+// resolveThemes 過濾偏好序 order,只留下實際內建(該 dir 有 tileseta.png)的美術模組,
+// 保持 order 的先後(第一個即預設)。純邏輯、不建圖,供單元測試。
+func resolveThemes(fsys fs.FS, order []string) []string {
+	var mods []string
+	for _, m := range order {
+		if themeExists(fsys, m) {
+			mods = append(mods, m)
+		}
+	}
+	return mods
 }
 
 // CycleTheme 切到下一個可用美術模組(繞回)並重載美術。回傳新選中的模組名。

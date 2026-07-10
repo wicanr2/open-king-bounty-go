@@ -27,9 +27,9 @@ func init() {
 	// 美術(tileset/sprite)會建 ebiten.Image → 必須延後到遊戲迴圈第一幀(JVM/繪圖就緒),
 	// 否則在 init() 會 panic「devicescale: no current JVM」。交給 app 的 boot 回呼。
 	boot := func() {
-		// 美術主題(module)偏好序:DOS EGA → FM Towns → free。版權主題(dos/fmtowns)
-		// 未內建時自動缺席,退回 free。切換由 F8 / 觸控 ☰ 觸發(screen.CycleTheme)。
-		if active := screen.InitThemes(embedded.FS(), []string{"dos", "fmtowns", "free"}); active != "" {
+		// 美術主題(module)偏好序:DOS → Genesis → Amiga → free(沿用 C openkb 四主題)。
+		// 版權主題(dos/genesis/amiga)未內建時自動缺席,退回 free。切換由 F8 / 觸控 ☰ 觸發。
+		if active := screen.InitThemes(embedded.FS(), []string{"dos", "genesis", "amiga", "free"}); active != "" {
 			log.Printf("art theme: %s (available: %v)", active, screen.AvailableThemes())
 		} else {
 			log.Printf("art theme: none found")
