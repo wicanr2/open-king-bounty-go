@@ -186,10 +186,32 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		return Stay()
 	}
 	tile := s.gs.WorldMap.Tile(cont, nx, ny)
-	if !walkable(tile) {
+	// 登船/航行/上岸(對齊 C map 移動的 boat 段,game.c:6837-6957):
+	//   - 目標是玩家船隻停靠格 → 登船(mount=SAIL)。
+	//   - 水域:只有乘船(或正登船)才走得過去,否則擋下。
+	//   - 陸地:沿用既有 walkable()(擋水/深水/岩;其餘可走)。
+	// 移動後:乘船時船隨玩家;若踏上非水非橋(靠岸)則下船(mount=RIDE),船留在上一格水域。
+	boarding := s.gs.HasBoat() && int(s.gs.Boat) == cont && s.gs.BoatX == nx && s.gs.BoatY == ny
+	if kbdata.IsWater(tile) || kbdata.IsDeepWater(tile) {
+		if s.gs.Mount != gamestate.KBMountSail && !boarding {
+			return Stay() // 無船不能下水
+		}
+	} else if !walkable(tile) {
 		return Stay()
 	}
+	lastX, lastY := s.gs.X, s.gs.Y
 	s.gs.X, s.gs.Y = nx, ny
+	if boarding {
+		s.gs.Mount = gamestate.KBMountSail
+	}
+	if s.gs.Mount == gamestate.KBMountSail {
+		s.gs.BoatX, s.gs.BoatY = nx, ny // 船隨玩家(對齊 C「tuck the boat with us」)
+		if !kbdata.IsWater(tile) && !kbdata.IsDeepWater(tile) && !kbdata.IsBridge(tile) {
+			// 靠岸下船(對齊 C「Hitting shore / Leave ship」),船留在上一格水域。
+			s.gs.Mount = gamestate.KBMountRide
+			s.gs.BoatX, s.gs.BoatY = lastX, lastY
+		}
+	}
 	// 踩到城鎮 → 進城(疊上 TownScreen,離開後回地圖)
 	if tile == kbdata.TileTown {
 		townID := 0
@@ -334,12 +356,13 @@ func (s *WorldMapScreen) Draw(dst *ebiten.Image) {
 			}
 		}
 	}
-	// 主角 sprite 置中(cursor.png 幀 8 = KBMOUNT_RIDE 騎馬,對齊 C draw_player:
-	// hsrc.x = tile_w*(mount+frame),mount RIDE=8;無 sprite 退回青框)。
+	// 主角 sprite 置中(對齊 C draw_player:hsrc.x = tile_w*(mount+frame))。
+	// 幀 = 座騎值:KBMOUNT_RIDE=8 騎馬、KBMOUNT_SAIL=0 乘船、KBMOUNT_FLY=4 飛行;
+	// 乘船時自動顯示船隻 sprite。無 sprite 退回青框。
 	heroX := mapX + radii*mapTileW
 	heroY := mapY + (perim-1-radii)*mapTileH
 	if heroSprite != nil {
-		heroSprite.DrawFrame(dst, 8, heroX, heroY)
+		heroSprite.DrawFrame(dst, s.gs.Mount, heroX, heroY)
 	} else {
 		vector.StrokeRect(dst, float32(heroX)+2, float32(heroY)+2, mapTileW-4, mapTileH-4, 2, color.RGBA{0, 230, 230, 255}, false)
 	}
