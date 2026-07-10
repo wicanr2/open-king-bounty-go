@@ -20,6 +20,8 @@ const maxTroops = 25
 // 以及精確的 week_id(C 用 passed_days/WEEK_DAYS;這裡用 Week 計數近似)。
 // rng 由呼叫端注入(kbrng),parity 測試才能對 seed。
 func (gs *GameState) EndWeek(a *kbdata.Assets, rng kbrng.Rand) int {
+	// 停時歸零(對齊 C end_week 開頭 game->time_stop = 0)
+	gs.TimeStop = 0
 	// 重設當週可用領導力(base 保留 → 寶箱/升階加成不流失)
 	gs.Leadership = gs.BaseLeadership
 
@@ -60,5 +62,54 @@ func (gs *GameState) EndWeek(a *kbdata.Assets, rng kbrng.Rand) int {
 		}
 	}
 
+	// === 每週世界事件(對齊 C end_week 的 World events 段,play.c) ===
+	gs.weeklyWorldGrowth(a, rng, creature)
+
 	return creature
+}
+
+// weeklyWorldGrowth 對齊 C end_week 的世界事件:補滿空的玩家城堡守軍、讓「本週生物 =
+// creature」的巢穴補到 max_population、foe/非玩家城堡的 creature 兵種依 growth 增長。
+func (gs *GameState) weeklyWorldGrowth(a *kbdata.Assets, rng kbrng.Rand, creature int) {
+	if creature < 0 || creature >= len(a.Troops) {
+		return
+	}
+	growth := a.Troops[creature].Growth
+	maxPop := a.Troops[creature].MaxPopulation
+
+	// 補滿空的玩家城堡(對齊 C:owner==0xFF 且 castle_numbers[j][0]==0 → repopulate)。
+	castles := LoadCastles(a)
+	for j := 0; j < kbdata.MaxCastles; j++ {
+		if gs.CastleOwner[j] == KBCastlePlayer && gs.CastleNumbers[j][0] == 0 {
+			gs.repopulateCastle(rng, castles, j)
+		}
+	}
+
+	for cont := 0; cont < kbdata.MaxContinents; cont++ {
+		// 巢穴:本週生物的巢穴補到 max_population。
+		for i := 0; i < kbdata.MaxDwellings; i++ {
+			if gs.DwellingTroop[cont][i] == creature {
+				gs.DwellingPopulation[cont][i] = maxPop
+			}
+		}
+		// foe:本週生物 +growth。
+		for j := 0; j < kbdata.MaxFoes; j++ {
+			for i := 0; i < 3; i++ {
+				if gs.FoeTroops[cont][j][i] == creature {
+					gs.FoeNumbers[cont][j][i] += growth
+				}
+			}
+		}
+	}
+
+	// 非玩家城堡:本週生物 +growth。
+	for j := 0; j < kbdata.MaxCastles; j++ {
+		if gs.CastleOwner[j] != KBCastlePlayer {
+			for i := 0; i < 5; i++ {
+				if gs.CastleTroops[j][i] == creature {
+					gs.CastleNumbers[j][i] += growth
+				}
+			}
+		}
+	}
 }
