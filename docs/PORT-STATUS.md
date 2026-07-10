@@ -337,10 +337,11 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
 
 ## 📋 待辦工作項
 
-- [ ] **Android 推廣影片**(使用者 2026-07-11 要求):用**最終修改完的版本**錄製 Android 版推廣片,
-      涵蓋 DOS 預設美術、主題切換(主題鈕 DOS→Genesis→Amiga→free)、戰鬥施法、拼圖、作弊選單等亮點。
-      參考 C 版 `openkb-code/scripts/make-promo.sh`;錄製流程見 skill `retro-game-playtest`
-      (swipe-hold 觸控、adb screenrecord)。**待所有功能定版後再拍。**
+- [x] **Android 推廣影片**——✅ 完成(2026-07-11):`~/openkb/android-promo/openkb-android-promo-20260711.mp4`
+      (1920×1080,39s)。模擬器 adb screenrecord + swipe-hold 觸控錄製,涵蓋:DOS 預設世界地圖 →
+      主題切換(主題鈕 DOS→Genesis→Amiga→free)→ 作弊選單(+套用 +5000 金幣)→ 權杖拼圖 →
+      戰鬥(走進敵人)→ 戰鬥施法(施法→火球術→選敵→施放)。錄製過程順帶修好 拼圖 觸控不可達
+      (commit 82c462b)。demo 用 mobile.go demoWorldMap 已 revert(未 commit)。
 - [x] **Genesis 主題抽取**——✅ 完成(2026-07-10):`scripts/extract-genesis-theme.sh`(md-rom.c
       MD_Resolve dumper,SDL2 + env hook stub)→ `data/genesis/`(44 張:tileset+25 兵種+17 惡棍)。
       桌面 Xvfb 驗證世界地圖 + 戰鬥 Genesis 美術正確、兵種白底去背正確。UI/portrait/logo → free 補
