@@ -85,4 +85,22 @@ type GameState struct {
 	NavmapCoords [kbdata.MaxContinents][2]int
 	// TelecaveCoords[cont][id] = [x,y],對應 C game->teleport_coords[MAX_CONTINENTS][MAX_TELECAVES][2]。
 	TelecaveCoords [kbdata.MaxContinents][kbdata.MaxTelecaves][2]int
+
+	// --- Castle / villain / contract world state(salt_villains/repopulate_castle,
+	// 見 castlegen.go;由 NewGame 在 saltContinent 之後呼叫)---
+
+	// CastleOwner[id] = 0x7F(怪物,未被惡棍佔領)、0xFF(玩家)、其他值 = 佔領該城堡的
+	// 惡棍 id,對應 C game->castle_owner[MAX_CASTLES](bounty.h:136)。
+	CastleOwner [kbdata.MaxCastles]byte
+	// CastleTroops[id][0..4] = 該城堡守軍兵種 id(惡棍守軍或 repopulate_castle 填的怪物),
+	// 對應 C game->castle_troops[MAX_CASTLES][5]。
+	CastleTroops [kbdata.MaxCastles][5]int
+	// CastleNumbers[id][0..4] = 對應數量,對應 C game->castle_numbers[MAX_CASTLES][5]。
+	CastleNumbers [kbdata.MaxCastles][5]int
+
+	// Contract 系列,對應 C spawn_game 起手值(play.c:418-425)。
+	Contract      byte    // 目前接的懸賞契約 villain id;0xFF = 尚未接(C: byte contract)
+	LastContract  byte    // C: byte last_contract,起手固定 0x04
+	MaxContract   byte    // C: byte max_contract,起手固定 0x05
+	ContractCycle [5]byte // 可接的 5 個惡棍 id 循環,對應 C byte contract_cycle[5]
 }

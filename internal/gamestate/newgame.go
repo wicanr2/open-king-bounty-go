@@ -25,11 +25,10 @@ const emptySquad = 255
 const DefaultWorldSeed uint32 = 1
 
 // NewGame 建立角色起手狀態,對應 C 版 src/play.c 的 spawn_game。
-// 涵蓋「玩家角色起手數值」(BaseLeadership/Gold/Army 等)、salt_spells 的
-// town_spell 隨機分配,以及 salt_continent 的世界生成(棲地/敵人佈置,見
-// worldgen.go);城堡/惡棍/契約/船隻等世界狀態仍不在此(spawn_game 呼叫
-// salt_continent 之後還有 salt_villains/repopulate_castle 等,尚未移植)。
-// 難度固定 easy/rank 0。
+// 涵蓋「玩家角色起手數值」(BaseLeadership/Gold/Army 等)、契約起手值、salt_spells
+// 的 town_spell 隨機分配、salt_continent 的世界生成(棲地/敵人佈置,見
+// worldgen.go),以及 salt_villains/repopulate_castle 的城堡/惡棍世界生成
+// (見 castlegen.go)。船隻(boat)/計分等世界狀態仍不在此。難度固定 easy/rank 0。
 //
 // 忠實對齊 spawn_game:先 Rank=0,再呼叫 acceptRank(等同 C 的 player_accept_rank),
 // 由它把 classes[class][0] 的**增量**累加進 BaseLeadership/MaxSpells/SpellPower/Commission/
@@ -42,15 +41,17 @@ const DefaultWorldSeed uint32 = 1
 //     資料流,見下方 parity 誠實註記)。
 //
 // world seed / RNG parity 誠實註記(同 townspell.go 的 saltSpells 註記,範圍擴大到
-// 世界生成):C 版 spawn_game 是一長串固定順序的 rand() 呼叫(角色起手不耗用 rand、
-// salt_spells 耗用一段、salt_continent 每洲各耗用一段、salt_villains/repopulate_castle
-// 還會再耗用)。本移植目前只重現到 salt_spells + salt_continent 這段呼叫序列,
-// 尚未移植 salt_villains/repopulate_castle(它們不消耗獨立 rand 流,只是還沒實作),
-// 所以「同一個 seed 在 C/Go 兩邊得到完全相同的世界佈置」仍不保證逐 seed 對齊
-// (C 版本身在 salt_continent 之前已經呼叫過 scepter 相關的 rand,而 Go 版
-// NewGame 尚未移植 scepter 佈置,兩邊呼叫序列在那之前就已經分岔)——但
-// salt_continent/populate_dwelling/repopulate_foe/roll_creature 演算法本身
-// (放置規則、roll 範圍與型別、population 計算)逐句忠實對齊 C,行為性質一致。
+// 世界生成 + 城堡/惡棍):C 版 spawn_game 是一長串固定順序的 rand() 呼叫(角色起手
+// 不耗用 rand、salt_spells 耗用一段、salt_continent 每洲各耗用一段、salt_villains/
+// repopulate_castle 接續耗用)。本移植目前重現到 salt_spells → salt_continent(四洲)
+// → salt_villains(四洲)→ repopulate_castle 這段呼叫序列,但**在此之前** C 版
+// spawn_game 已先呼叫過 scepter 相關的 rand(KB_rand(0x00,0xFF) 藏權杖鑰匙、
+// KB_rand(100,400) 選洲、grass_on_continent 後再 KB_rand 選格子埋權杖)——Go 版
+// NewGame 尚未移植這段 scepter 佈置,兩邊的 rand 呼叫序列在最開頭就已分岔,故
+// 「同一個 seed 在 C/Go 兩邊得到完全相同的世界佈置」仍不保證逐 seed 對齊。
+// salt_continent/populate_dwelling/repopulate_foe/roll_creature/salt_villains/
+// repopulate_castle 演算法本身(放置規則、roll 範圍與型別、population 計算)
+// 逐句忠實對齊 C,行為性質一致,只是尚未從第一個 rand() 呼叫起就逐值對齊。
 func NewGame(a *kbdata.Assets, name string, class int, seed uint32) *GameState {
 	gs := &GameState{
 		Name:  name,
@@ -62,6 +63,13 @@ func NewGame(a *kbdata.Assets, name string, class int, seed uint32) *GameState {
 	// 套用 rank 0 增量(base 從 0 起),再讓當前可用領導力對齊 base。
 	gs.acceptRank(a)
 	gs.Leadership = gs.BaseLeadership
+
+	// Contract 起手值,對齊 C spawn_game(play.c:418-425)。不消耗 rand,
+	// 順序上放在這裡只是照抄 C 原始程式碼位置,對結果無影響。
+	gs.Contract = 0xFF
+	gs.LastContract = 0x04
+	gs.MaxContract = 0x05
+	gs.ContractCycle = [5]byte{0, 1, 2, 3, 4}
 
 	for i := 0; i < 2; i++ {
 		gs.Army[i] = Squad{
@@ -84,6 +92,32 @@ func NewGame(a *kbdata.Assets, name string, class int, seed uint32) *GameState {
 			// 對齊 C spawn_game:`salt_continent(game, i, 2, 1, 1, 2, 10, 5);`
 			// (2 artifact / 1 navmap / 1 orb / 2 telecave / 10 dwelling / 5 friendly)。
 			gs.saltContinent(a, rng, cont, 2, 1, 1, 2, 10, 5)
+		}
+	}
+
+	// 城堡/惡棍世界生成(對齊 C spawn_game,play.c:461-478,緊接在 salt_continent
+	// 四洲迴圈之後):先把全部城堡初始化成 castleOwnerMonsters(0x7F),再依序對
+	// 四洲呼叫 saltVillains(累加 base_id),最後對仍是 0x7F 的城堡呼叫
+	// repopulateCastle 填怪物守軍。
+	//
+	// 依賴 castles.ini(a.Strings["castles"])而非 a.World:城堡座標/惡棍佈置與
+	// 地圖 tile 無關,只要有 castles.ini 就能生成,與 saltContinent 依賴 a.World
+	// 是各自獨立的前提(nil-safe 慣例,見 kbdata.Assets 文件)。
+	if a != nil && a.Strings["castles"] != nil {
+		castles := LoadCastles(a)
+		for i := 0; i < kbdata.MaxCastles; i++ {
+			gs.CastleOwner[i] = castleOwnerMonsters
+		}
+
+		base := 0
+		for cont := 0; cont < kbdata.MaxContinents; cont++ {
+			base = gs.saltVillains(rng, castles, cont, base)
+		}
+
+		for i := 0; i < kbdata.MaxCastles; i++ {
+			if gs.CastleOwner[i] == castleOwnerMonsters {
+				gs.repopulateCastle(rng, castles, i)
+			}
 		}
 	}
 

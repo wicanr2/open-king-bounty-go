@@ -24,6 +24,7 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 | **軍隊檢視** | view_army | viewarmy.go(+ gamestate/morale.go:troop_morale/morale_chart/morale_names) |
 | **角色檢視** | view_character | viewcharacter.go(班底立繪 + 數值框 + 底部道具帶;player_captured/num_artifacts/castles/score/followers_killed 為世界狀態佔位 0,artifact_found 全空、continent_found 僅 home 洲) |
 | **世界生成(salt_continent)** | salt_continent/populate_dwelling/repopulate_foe/roll_creature(play.c:28-330) | gamestate/worldgen.go(NewGame 逐洲跑,填 gs.WorldMap + Dwelling*/Foe*/Orb/Navmap/Telecave 座標;worldmap.go/recruit.go 接線讀真實世界狀態,取代舊 placeholderFoe/demoRecruitTroopID 佔位) |
+| **世界生成(城堡/惡棍/契約起手值)** | salt_villains/repopulate_castle/num_castles(play.c:77-182)+ spawn_game 城堡/契約段(374-478) | gamestate/castlegen.go + castle.go(NewGame 在 saltContinent 四洲之後跑;CastleOwner/CastleTroops/CastleNumbers/Contract 系列欄位,見下方獨立小節;**尚未接畫面**——visit_castle/view_contract 等待後續) |
 
 ## ⬜ 剩餘畫面(以 C 源為規格逐一移植)
 
@@ -58,9 +59,9 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
 (見下方「世界生成」段);town 的契約/租船/情報仍是「佔位 stub」,要讓它們變真實,
 還需要把 C spawn_game 剩下的 contract/boat/castle/villain 世界生成移植進 gamestate.NewGame:
 
-- [ ] **contract / villain** 系統(contract 循環、villain 位置、view_contract/sidebar 頭像)
+- [x] **villain 位置 + contract 起手值**(salt_villains 已把惡棍塞進城堡;contract/last_contract/max_contract/contract_cycle 起手值已設,見下方獨立小節)——**view_contract 畫面/sidebar 頭像/接受契約動作仍未做**
 - [ ] **boat**(租船 + 航行 + 上下船)
-- [ ] **castle** 世界狀態(castle_owner/troops/numbers、repopulate_castle、salt_villains)
+- [x] **castle** 世界狀態(castle_owner/troops/numbers、repopulate_castle、salt_villains,見下方獨立小節)——**visit_castle 等城堡畫面仍未做**
 - [x] **dwelling** 真實兵種 + 庫存(populate_dwelling/dwelling_population;recruit.go 已讀真實世界狀態)
 - [x] **foe** 真實部隊(foe_troops/foe_numbers;worldmap.go 已讀真實世界狀態,取代 placeholderFoe)
 - [ ] **artifact / scepter**(拼圖、尋寶、破關條件;座標已記錄於 map tile,尚未接 UI/撿拾邏輯)
@@ -93,6 +94,51 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
    涵蓋 troop id=2(義勇軍,Home=Castle),隨機 roll 到它時 tile = `TileDwelling1+4=0x90`
    撞進 `TileSignpost` 的數值——桌面截圖驗收時實測命中此案例(continent=2 id=4,seed=1),
    已在 worldgen.go/worldgen_test.go 逐句記錄成因,不視為 bug、不「修正」遊戲邏輯本身。
+
+### 世界生成(城堡/惡棍/契約起手值)——已完成(2026-07-10)
+
+移植自 `num_castles`/`salt_villains`/`repopulate_castle`(play.c:128-182)+ `spawn_game`
+的城堡初始化/惡棍呼叫序列/契約起手值段(play.c:374-478),見
+`internal/gamestate/castle.go`(靜態城堡表)+ `internal/gamestate/castlegen.go`
+(salt_villains/repopulate_castle 邏輯)。逐句對照 C,細節/怪癖照抄:
+
+- **城堡座標來源(關鍵溯源,rulebook 62)**:`castle_coords[MAX_CASTLES][3]`(bounty.c:647)
+  **會**被 free 模組透過 `refill_rules()`(game.c:304-307,`DAT_CASTLEX/Y/C`)覆寫,
+  且 free 的 `data/free/castles.ini` 座標與 bounty.c 硬編值**確實不同**(castle0:
+  bounty.c `{0,30,27}` vs castles.ini `{continent=0,x=44,y=12}`,因為 free 用自製
+  land.tmx 地圖、非 DOS 原版佈局)——與先前 town_coords/special_coords 已知的同類坑
+  相同模式。故 `gamestate/castle.go` 的 `LoadCastles` 改讀 `castles.ini`(對齊既有
+  `town.go` 讀 `towns.ini` 的做法),**不**照抄 bounty.c 的 `castle_coords` 字面。
+  `castle_difficulty[MAX_CASTLES]`(bounty.c:612)則相反——free 模組**沒有**
+  `DAT_CASTLEDIFF` 覆寫鍵,`castles.ini` 裡的 `difficulty` 欄位是 land.tmx 匯出工具的
+  殘留欄位、C 引擎從未讀取,故 `Castle.Difficulty` 仍查 `kbdata.CastleDifficultyTable()`
+  (bounty.c 硬編,不受 ini 影響)。
+- **惡棍守軍資料**(`villain_army_troops`/`villain_army_numbers`,bounty.c:247/266)
+  同樣會被 `DAT_VTROOP`/`WDAT_VNUMBER` 覆寫,但**逐筆核對** free 的
+  `villains.ini` armyN 欄("N x 兵種名"字串,經 troops.ini 名稱表可還原成 troop id)
+  與 bounty.c 字面值**完全一致**(只是把同一批數字換成中文兵種名重新表達),
+  故 `kbdata/tables_villains.go` 直接照抄 bounty.c 字面,不需在執行期解析 ini。
+  `villains_per_continent`(bounty.c:220)確認**沒有**對應 `DAT_*` 覆寫鍵。
+- **spawn_game 呼叫順序**(play.c:461-478,`saltContinent` 四洲之後):
+  全部 26 城堡 `CastleOwner` 先設 `castleOwnerMonsters`(0x7F)→ 依序對 4 洲呼叫
+  `saltVillains`(累加 base_id,對齊 C `salt_villains(0,0)/(1,i)/(2,i)/(3,i)`)→
+  對仍是 0x7F 的城堡呼叫 `repopulateCastle`。契約起手值(`Contract=0xFF`/
+  `LastContract=0x04`/`MaxContract=0x05`/`ContractCycle={0,1,2,3,4}`,play.c:418-425)
+  在 NewGame 內對齊 C 原始位置設定(不耗用 rand,位置對結果無影響)。
+- **世界狀態欄位**:CastleOwner/CastleTroops/CastleNumbers、Contract/LastContract/
+  MaxContract/ContractCycle(gamestate.go),全部 exported,隨 GameState 一起被
+  encoding/json 存讀檔完整持久化,未擴充存檔格式。
+- **RNG parity 誠實註記**:與 salt_continent 同一個 kbrng 實例延續消耗,但 C 版
+  spawn_game 在 salt_continent 之前已先呼叫 scepter 相關 rand(藏權杖鑰匙/選洲/選格),
+  Go 版尚未移植這段,故兩邊 rand 呼叫序列從最開頭就已分岔,「同 seed 逐值對齊」
+  仍不保證;salt_villains/repopulate_castle 演算法本身逐句忠實對齊 C。
+- **驗收**:單元測試(gamestate/castle_test.go、castlegen_test.go、
+  castlegen_newgame_test.go)涵蓋:castles.ini 真值核對(含缺檔 best-effort)、
+  num_castles 洲別分佈(9/7/6/4)、saltVillains 直接演算法(4 個 seed,逐洲惡棍數 +
+  守軍資料對表)、城堡不足安全閥(不 panic/不無窮迴圈)、repopulateCastle 保底值、
+  NewGame 整合(每洲惡棍數 6/4/4/3、17 座惡棍城堡守軍逐值對表、9 座怪物城堡
+  repopulate 非空、契約起手值、存讀檔往返)。docker `golang:1.24-bookworm`
+  build/vet/xvfb-run test 全綠(含既有 render/screen/combat 套件回歸)。
 
 ## 建議優先序
 
