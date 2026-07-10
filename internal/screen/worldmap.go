@@ -164,6 +164,9 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 				return Push(NewNavigateContinentScreen(s.gs, s.assets))
 			}
 			return Stay()
+		case 'd':
+			// 解散部隊(對齊 C KEY_ACT(DISMISS_ARMY),game.c:6787)。
+			return Push(NewDismissArmyScreen(s.gs, s.assets))
 		}
 	}
 
@@ -421,6 +424,7 @@ func (s *WorldMapScreen) Keymap() input.Keymap {
 		{Rune: 'l', Label: "讀檔"},
 		{Rune: 'v', Label: "軍隊"},
 		{Rune: 'c', Label: "角色"},
+		{Rune: 'd', Label: "解散"},
 	}
 	// 乘船時多一顆「換洲」(對齊 C:navigate_continent 僅 mount==SAIL 可用)。
 	if s.gs != nil && s.gs.Mount == gamestate.KBMountSail {
