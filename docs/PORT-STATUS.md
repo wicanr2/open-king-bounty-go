@@ -21,12 +21,12 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 | 法術分配各鎮 | salt_spells | gamestate/townspell.go |
 | 觸控層(每畫面 Keymap 自動生成) | — | input/touch.go |
 | CJK 雙層合成 | env-sdl cjk overlay | render/cjktext.go |
+| **軍隊檢視** | view_army | viewarmy.go(+ gamestate/morale.go:troop_morale/morale_chart/morale_names) |
 
 ## ⬜ 剩餘畫面(以 C 源為規格逐一移植)
 
 ### A. 檢視畫面(主要是顯示既有 gamestate,自足、優先)
 - [ ] **view_character** 角色表(game.c:1736)— 職業/階級/領導力/傷害加成/魔力/契約數…
-- [ ] **view_army** 軍隊檢視(game.c:1856)— 5 格部隊詳情(數量/士氣/移動/HP…)
 - [ ] **view_contract** 懸賞契約(game.c:1641)— 目標 villain 頭像 + 資訊(需 contract 世界狀態)
 - [ ] **view_puzzle** 拼圖(game.c:1392)— 5×5 拼圖(需 artifact/villain 世界狀態)
 - [ ] **view_minimap** 小地圖/導航(game.c:1533)— 該洲縮圖(需 orb/navmap 狀態)
@@ -67,7 +67,7 @@ worldmap 的 foe/dwelling)。要讓它們變真實,需把 C spawn_game/salt_cont
 
 ## 建議優先序
 
-1. **檢視畫面 A(view_character/view_army)** — 自足、只讀既有 gamestate、玩家常用,先做累積可見進度。
+1. **檢視畫面 A(view_character,view_army 已完成)** — 自足、只讀既有 gamestate、玩家常用,先做累積可見進度。
 2. **世界狀態 D(dwelling→foe→contract/boat)** — 逐一把 stub 換真實,解鎖 recruit/combat/town 動作與 view_contract/sidebar。
 3. **城堡系列 B** — 待 castle 世界狀態後做。
 4. **開場/雜項 D** — 收尾。

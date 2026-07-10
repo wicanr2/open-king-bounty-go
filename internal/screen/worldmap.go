@@ -114,6 +114,10 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 			return Stay()
 		case 'l':
 			return s.handleLoad()
+		case 'v':
+			// 檢視軍隊(對齊 C combat_options_menu / 世界地圖選單「檢視軍隊」項):
+			// 疊上 ViewArmyScreen,ESC 離開後回地圖(Push,非 Replace)。
+			return Push(NewViewArmyScreen(s.gs, s.assets))
 		}
 	}
 
@@ -320,6 +324,7 @@ func (s *WorldMapScreen) Keymap() input.Keymap {
 		Letters: []input.LetterItem{
 			{Rune: 's', Label: "存檔"},
 			{Rune: 'l', Label: "讀檔"},
+			{Rune: 'v', Label: "軍隊"},
 		},
 	}
 }

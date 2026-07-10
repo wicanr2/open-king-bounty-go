@@ -17,16 +17,17 @@ import (
 const defaultDataDir = "/home/anr2/openkb/openkb-code/data"
 
 var (
-	datadir      = flag.String("datadir", defaultDataDir, "遊戲資料目錄(cjk24.bin / free/*.ini / free/*.png)")
-	startClass   = flag.Int("startclass", -1, "debug:>=0 直接以該職業建角進世界地圖(截圖驗證用)")
-	startCombat  = flag.Bool("startcombat", false, "debug:直接切入一場戰鬥(截圖驗證用)")
-	startSelect  = flag.Bool("startselect", false, "debug:直接進選角畫面(截圖驗證用)")
-	startTown    = flag.Bool("starttown", false, "debug:直接進城鎮畫面(截圖驗證用)")
-	townID       = flag.Int("townid", 0, "debug:配合 -starttown,指定要進哪個鎮(0-25,對應 gamestate.Town.ID)")
-	startRecruit = flag.Bool("startrecruit", false, "debug:直接進招兵(棲地)畫面(截圖驗證用)")
-	recruitRtype = flag.Int("rtype", 0, "debug:配合 -startrecruit,棲地類型(0=平原 1=森林 2=山丘 3=地下城)")
-	recruitTroop = flag.Int("recruittroop", 0, "debug:配合 -startrecruit,招募兵種 TroopID")
-	worldSeed    = flag.Uint("seed", uint(gamestate.DefaultWorldSeed), "debug:配合 -starttown/-startclass,指定 salt_spells 等世界生成用的 RNG seed")
+	datadir       = flag.String("datadir", defaultDataDir, "遊戲資料目錄(cjk24.bin / free/*.ini / free/*.png)")
+	startClass    = flag.Int("startclass", -1, "debug:>=0 直接以該職業建角進世界地圖(截圖驗證用)")
+	startCombat   = flag.Bool("startcombat", false, "debug:直接切入一場戰鬥(截圖驗證用)")
+	startSelect   = flag.Bool("startselect", false, "debug:直接進選角畫面(截圖驗證用)")
+	startTown     = flag.Bool("starttown", false, "debug:直接進城鎮畫面(截圖驗證用)")
+	townID        = flag.Int("townid", 0, "debug:配合 -starttown,指定要進哪個鎮(0-25,對應 gamestate.Town.ID)")
+	startRecruit  = flag.Bool("startrecruit", false, "debug:直接進招兵(棲地)畫面(截圖驗證用)")
+	startViewArmy = flag.Bool("startviewarmy", false, "debug:直接進軍隊檢視畫面(截圖驗證用)")
+	recruitRtype  = flag.Int("rtype", 0, "debug:配合 -startrecruit,棲地類型(0=平原 1=森林 2=山丘 3=地下城)")
+	recruitTroop  = flag.Int("recruittroop", 0, "debug:配合 -startrecruit,招募兵種 TroopID")
+	worldSeed     = flag.Uint("seed", uint(gamestate.DefaultWorldSeed), "debug:配合 -starttown/-startclass,指定 salt_spells 等世界生成用的 RNG seed")
 )
 
 func rootScreen(a *kbdata.Assets) screen.Screen {
@@ -41,6 +42,10 @@ func rootScreen(a *kbdata.Assets) screen.Screen {
 	if *startRecruit {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
 		return screen.NewRecruitScreen(gs, a, *recruitTroop, *recruitRtype)
+	}
+	if *startViewArmy {
+		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
+		return screen.NewViewArmyScreen(gs, a)
 	}
 	if *startClass >= 0 && *startClass < 4 {
 		gs := gamestate.NewGame(a, "Sir Loin", *startClass, gamestate.DefaultWorldSeed)
