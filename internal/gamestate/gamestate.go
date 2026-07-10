@@ -36,6 +36,10 @@ type GameState struct {
 
 	Week int // 已過週數;end_week 每次遞增,用於「每 4 週補農夫」判定(C: week_id = passed_days/WEEK_DAYS)
 
+	// TimeStop = 停時術剩餘回合數(對應 C game->time_stop):>0 時世界地圖走路不耗天數
+	// (見 worldmap 移動)、戰鬥中敵方跳過。由 SPELL_TIMESTOP 施放累加(spell_power*10)。
+	TimeStop int
+
 	// 玩家在世界地圖的位置(對齊 C game->continent/x/y)。過去這三個值只存在
 	// WorldMapScreen(cont/px/py),導致存讀檔遺失位置、戰敗無法傳送回家;移入
 	// GameState 後隨 encoding/json 自動持久,WorldMapScreen 改讀寫這裡。

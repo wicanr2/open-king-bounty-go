@@ -168,6 +168,13 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		case 'd':
 			// 解散部隊(對齊 C KEY_ACT(DISMISS_ARMY),game.c:6787)。
 			return Push(NewDismissArmyScreen(s.gs, s.assets))
+		case 'z':
+			// 施放冒險法術(對齊 C KEY_ACT(SPELL)→choose_spell(game,NULL))。
+			// 不會魔法者 C 顯示 no_spell_banner 後返回;這裡直接不開選單。
+			if s.gs != nil && s.gs.KnowsMagic {
+				return Push(NewChooseSpellScreen(s.gs, s.assets))
+			}
+			return Stay()
 		}
 	}
 
