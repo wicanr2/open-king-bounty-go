@@ -269,6 +269,14 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		result := s.gs.TakeChest(s.assets, rng)
 		return Push(NewChestScreen(s.gs, s.assets, result))
 	}
+	// 踩到 0x8E 格(TileTelecave 與 TileDwelling3 同值):先當傳送洞試瞬移(對齊 C
+	// visit_telecave force=1,game.c:6880),座標中則瞬移到成對另一端、留在地圖;
+	// 不中(其實是地下城棲地)則往下走一般棲地招兵流程。
+	if tile == kbdata.TileTelecave {
+		if s.gs.VisitTelecave() {
+			return Stay()
+		}
+	}
 	// 踩到棲地 → 招兵(疊上 RecruitScreen,離開後回地圖)。rtype 對齊 C
 	// game.c:6915 visit_dwelling(game, m - TILE_DWELLING_1):TileDwelling1..4 依序
 	// 對應 rtype 0=平原 1=森林 2=山丘 3=地下城。棲地 id 依座標查 gs.DwellingCoords
