@@ -17,17 +17,55 @@ import (
 	"github.com/wicanr2/open-king-bounty-go/internal/save"
 )
 
-// demoRecruitTroopID 是踩到棲地(TileDwelling1..4)時暫代的招募兵種(index 0=農夫)。
-// TODO: 真正的「棲地住哪種兵」需要世界狀態 dwelling_troop(land.ini 尚未解析),
-// 屆時應依 tile 種類 / 座標查表決定 troopID,而不是固定寫死。
-const demoRecruitTroopID = 0
+// findDwellingID 在 gs.DwellingCoords[cont] 找座標 (x,y) 對應的棲地 id,對齊 C
+// game.c:3006-3010 visit_dwelling() 的線性掃描(不 break,取最後一個相符的 i——
+// 座標理論上唯一,結果與有無 break 無差異,這裡忠實照抄不 break)。找不到回傳 -1
+// (對齊 C `if (id == -1) return 0;`——呼叫端應維持原地不動)。
+func findDwellingID(gs *gamestate.GameState, cont, x, y int) int {
+	id := -1
+	for i := 0; i < kbdata.MaxDwellings; i++ {
+		if gs.DwellingCoords[cont][i][0] == x && gs.DwellingCoords[cont][i][1] == y {
+			id = i
+		}
+	}
+	return id
+}
 
-// placeholderFoe 是暫代的敵方部隊(野狼×5),之後改取自世界狀態 foe_troops。
-func placeholderFoe() [combat.MaxUnits]gamestate.Squad {
+// findFoeID 在 gs.FoeCoords[cont] 找座標 (x,y) 對應的 foe id,對齊 C
+// game.c:3711-3720 attack_foe() 的線性掃描(找到就 break)。找不到回傳 0
+// (對齊 C 預設值 `int id = 0;`)。
+func findFoeID(gs *gamestate.GameState, cont, x, y int) int {
+	id := 0
+	for i := 0; i < kbdata.MaxFoes; i++ {
+		if gs.FoeCoords[cont][i][0] == x && gs.FoeCoords[cont][i][1] == y {
+			id = i
+			break
+		}
+	}
+	return id
+}
+
+// foeSquadsFrom 把世界狀態的 foe_troops/foe_numbers(5 格,對齊 C game->foe_troops/
+// foe_numbers[cont][id][5])轉成 combat 套件要的 [MaxUnits]Squad,數量為 0 的格
+// 填 TroopID=255(空格哨兵值,對齊 gamestate.Squad 慣例;C 版本身沒有這個哨兵值,
+// 是 combat.PrepareUnitsFoe/gamestate.Squad 這層轉換介面的既有慣例,見 setup.go)。
+//
+// 誠實標註(對齊 worldgen.go saltContinent 註解):id < FRIENDLY_FOES(=5,見
+// kbdata.MaxFoes 相關常數與 C bounty.h FRIENDLY_FOES)的「友善」foe 在世界生成時
+// 刻意未呼叫 repopulateFoe(C 原始碼此處的 populate_foe 呼叫本身被註解掉),故這 5 個
+// 槽位在真正的 C 版遊戲中應觸發 game.c attack_foe() 的 accept_foe()「免費入隊」分支,
+// 而非戰鬥;本次世界生成移植只還原資料佈置,尚未實作 accept_foe 分支,故目前踩到
+// 這些槽位仍會走一般戰鬥流程,只是遇到的會是「全空」的敵軍(與先前 placeholderFoe
+// 佔位相比,至少不再是寫死的野狼,但這個特例本身是延續 C 既有的未完成功能,
+// 不是本次移植引入的新行為)。
+func foeSquadsFrom(troops, numbers [5]int) [combat.MaxUnits]gamestate.Squad {
 	var f [combat.MaxUnits]gamestate.Squad
-	f[0] = gamestate.Squad{TroopID: 3, Count: 5} // 野狼
-	for i := 1; i < combat.MaxUnits; i++ {
-		f[i] = gamestate.Squad{TroopID: 255}
+	for i := 0; i < combat.MaxUnits && i < 5; i++ {
+		if numbers[i] <= 0 {
+			f[i] = gamestate.Squad{TroopID: 255}
+			continue
+		}
+		f[i] = gamestate.Squad{TroopID: troops[i], Count: numbers[i]}
 	}
 	return f
 }
@@ -125,7 +163,7 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		}
 	}
 
-	if s.assets == nil || s.assets.World == nil {
+	if s.assets == nil || s.gs == nil || s.gs.WorldMap == nil {
 		if a.Kind == input.ActCancel {
 			return Replace(NewTitleScreen(s.assets))
 		}
@@ -149,7 +187,7 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 	if nx < 0 || ny < 0 || nx >= kbdata.LevelW || ny >= kbdata.LevelH {
 		return Stay()
 	}
-	tile := s.assets.World.Tile(s.cont, nx, ny)
+	tile := s.gs.WorldMap.Tile(s.cont, nx, ny)
 	if !walkable(tile) {
 		return Stay()
 	}
@@ -165,20 +203,27 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		}
 		return Push(NewTownScreen(s.gs, s.assets, townID))
 	}
-	// 踩到敵人 → 進戰鬥(疊上 CombatScreen,結束後回地圖)
+	// 踩到敵人 → 進戰鬥(疊上 CombatScreen,結束後回地圖),敵方部隊取自世界狀態
+	// gs.FoeTroops/FoeNumbers(對齊 C attack_foe() 依座標查 foe id 再讀 foe_troops/numbers)。
 	if tile == kbdata.TileFoe {
-		// TODO: 敵方部隊應取自世界狀態 foe_troops;暫用佔位(野狼)+ 依座標決定 seed。
-		foe := placeholderFoe()
+		foeID := findFoeID(s.gs, s.cont, nx, ny)
+		foe := foeSquadsFrom(s.gs.FoeTroops[s.cont][foeID], s.gs.FoeNumbers[s.cont][foeID])
 		return Push(NewCombatScreen(s.gs, s.assets, foe, uint32(nx*kbdata.LevelH+ny+1)))
 	}
 	// 踩到棲地 → 招兵(疊上 RecruitScreen,離開後回地圖)。rtype 對齊 C
 	// game.c:6915 visit_dwelling(game, m - TILE_DWELLING_1):TileDwelling1..4 依序
-	// 對應 rtype 0=平原 1=森林 2=山丘 3=地下城。
+	// 對應 rtype 0=平原 1=森林 2=山丘 3=地下城。棲地 id 依座標查 gs.DwellingCoords
+	// (對齊 C visit_dwelling 的線性掃描),RecruitScreen 內部再依 (cont,id) 讀
+	// gs.DwellingTroop/DwellingPopulation(真實世界狀態,取代舊佔位)。
 	if tile >= kbdata.TileDwelling1 && tile <= kbdata.TileDwelling4 {
 		rtype := int(tile - kbdata.TileDwelling1)
-		// TODO: 棲地實際教哪個兵種需世界狀態 dwelling_troop(land.ini 尚未解析);
-		// 暫寫死 demoRecruitTroopID 示範流程。
-		return Push(NewRecruitScreen(s.gs, s.assets, demoRecruitTroopID, rtype))
+		dwellingID := findDwellingID(s.gs, s.cont, nx, ny)
+		if dwellingID == -1 {
+			// 對齊 C `if (id == -1) return 0;`:理論上不該發生(tile 本身就是
+			// dwelling),防呆保留在原地不進招兵畫面。
+			return Stay()
+		}
+		return Push(NewRecruitScreen(s.gs, s.assets, s.cont, dwellingID, rtype))
 	}
 	return Stay()
 }
@@ -244,7 +289,7 @@ func tileColor(tile byte) color.Color {
 }
 
 func (s *WorldMapScreen) Draw(dst *ebiten.Image) {
-	if s.assets == nil || s.assets.World == nil {
+	if s.assets == nil || s.gs == nil || s.gs.WorldMap == nil {
 		ebitenutil.DebugPrint(dst, "world map: land.org 未載入")
 		return
 	}
@@ -261,7 +306,7 @@ func (s *WorldMapScreen) Draw(dst *ebiten.Image) {
 			sy := mapY + (perim-1-j)*mapTileH
 			tile := byte(kbdata.TileDeepWater) // 界外 = 深水(對齊 C 邊界填色)
 			if mx >= 0 && my >= 0 && mx < kbdata.LevelW && my < kbdata.LevelH {
-				tile = s.assets.World.Tile(s.cont, mx, my)
+				tile = s.gs.WorldMap.Tile(s.cont, mx, my)
 			}
 			if worldTileset != nil {
 				worldTileset.DrawTileAt(dst, tile, sx, sy)

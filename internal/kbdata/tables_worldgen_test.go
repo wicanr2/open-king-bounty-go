@@ -25,7 +25,7 @@ func TestWorldgenConstants(t *testing.T) {
 
 // TestCastleDifficultyTable 抽樣比對 castle_difficulty[MAX_CASTLES](bounty.c:612)。
 func TestCastleDifficultyTable(t *testing.T) {
-	table := castleDifficultyTable()
+	table := CastleDifficultyTable()
 	if len(table) != MaxCastles {
 		t.Fatalf("castleDifficultyTable length: got %d, want %d", len(table), MaxCastles)
 	}
@@ -47,7 +47,7 @@ func TestCastleDifficultyTable(t *testing.T) {
 
 // TestTroopChanceTableTable 抽樣比對 troop_chance_table(bounty.c:764)。
 func TestTroopChanceTableTable(t *testing.T) {
-	table := troopChanceTableTable()
+	table := TroopChanceTable()
 	if len(table) != MaxTroopDifficulty {
 		t.Fatalf("troopChanceTableTable rows: got %d, want %d", len(table), MaxTroopDifficulty)
 	}
@@ -69,7 +69,7 @@ func TestTroopChanceTableTable(t *testing.T) {
 
 // TestDwellingToTroopTable 抽樣比對 dwelling_to_troop(bounty.c:770)。
 func TestDwellingToTroopTable(t *testing.T) {
-	table := dwellingToTroopTable()
+	table := DwellingToTroopTable()
 	if len(table) != MaxTroopDifficulty {
 		t.Fatalf("dwellingToTroopTable rows: got %d, want %d", len(table), MaxTroopDifficulty)
 	}
@@ -91,7 +91,7 @@ func TestDwellingToTroopTable(t *testing.T) {
 
 // TestTroopNumbersTable 抽樣比對 troop_numbers[MAX_TROOPS][MAX_TROOP_DIFFICULTY](bounty.c:780)。
 func TestTroopNumbersTable(t *testing.T) {
-	table := troopNumbersTable()
+	table := TroopNumbersTable()
 	if len(table) != MaxTroops {
 		t.Fatalf("troopNumbersTable rows: got %d, want %d", len(table), MaxTroops)
 	}
@@ -125,7 +125,7 @@ func TestTroopNumbersTable(t *testing.T) {
 // TestContinentDwellingsTable 抽樣比對 continent_dwellings(bounty.c:808),
 // 含 C 靜態陣列零填部分(不是只有 0xFF 之前的顯式值)。
 func TestContinentDwellingsTable(t *testing.T) {
-	table := continentDwellingsTable()
+	table := ContinentDwellingsTable()
 	if len(table) != MaxContinents {
 		t.Fatalf("continentDwellingsTable rows: got %d, want %d", len(table), MaxContinents)
 	}
@@ -146,7 +146,7 @@ func TestContinentDwellingsTable(t *testing.T) {
 
 // TestDwellingRangesTable 抽樣比對 dwelling_ranges[MAX_CONTINENTS][2](bounty.c:814)。
 func TestDwellingRangesTable(t *testing.T) {
-	table := dwellingRangesTable()
+	table := DwellingRangesTable()
 	if len(table) != MaxContinents {
 		t.Fatalf("dwellingRangesTable rows: got %d, want %d", len(table), MaxContinents)
 	}

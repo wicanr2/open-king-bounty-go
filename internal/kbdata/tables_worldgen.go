@@ -15,12 +15,14 @@ const (
 	MaxTroops           = 25 // MAX_TROOPS             (bounty.h:185,與 tables_troops.go 的 25 筆一致)
 	MaxTroopDifficulty  = 4  // MAX_TROOP_DIFFICULTY   (bounty.h:55)
 	MaxTroopChanceCurve = 5  // MAX_TROOP_CHANCE_CURVE (bounty.h:56)
+	MaxFoes             = 40 // MAX_FOES               (bounty.h:47)
+	MaxTelecaves        = 2  // MAX_TELECAVES          (bounty.h:53)
 )
 
-// castleDifficultyTable 回傳每座城堡的難度等級(0~3),
+// CastleDifficultyTable 回傳每座城堡的難度等級(0~3),
 // 移植自 C 版 castle_difficulty[MAX_CASTLES](bounty.c:612)。
 // 索引 = 城堡 id,語意與 tables_classes.go 的城堡座標表(castle_coords)索引一致。
-func castleDifficultyTable() [MaxCastles]int {
+func CastleDifficultyTable() [MaxCastles]int {
 	return [MaxCastles]int{
 		0, 1, 0, 1, 2, 0, 2, 2, 0, 1,
 		0, 2, 1, 0, 0, 0, 1, 0, 3, 2,
@@ -28,10 +30,10 @@ func castleDifficultyTable() [MaxCastles]int {
 	}
 }
 
-// troopChanceTableTable 回傳「撒鹽」用的機率累積曲線,
+// TroopChanceTable 回傳「撒鹽」用的機率累積曲線,
 // 移植自 C 版 troop_chance_table[MAX_TROOP_DIFFICULTY][MAX_TROOP_CHANCE_CURVE-1](bounty.c:764)。
 // 每列 4 個門檻值(0~0xFF 累積機率刻度),列 = 洲難度(0=易 ~ 3=難)。
-func troopChanceTableTable() [MaxTroopDifficulty][MaxTroopChanceCurve - 1]byte {
+func TroopChanceTable() [MaxTroopDifficulty][MaxTroopChanceCurve - 1]byte {
 	return [MaxTroopDifficulty][MaxTroopChanceCurve - 1]byte{
 		{0x3C, 0x5A, 0x62, 0x65},
 		{0x14, 0x46, 0x5F, 0x63},
@@ -40,11 +42,11 @@ func troopChanceTableTable() [MaxTroopDifficulty][MaxTroopChanceCurve - 1]byte {
 	}
 }
 
-// dwellingToTroopTable 回傳「棲地難度 → 兵種 id」對照表,
+// DwellingToTroopTable 回傳「棲地難度 → 兵種 id」對照表,
 // 移植自 C 版 dwelling_to_troop[MAX_TROOP_DIFFICULTY][MAX_TROOP_CHANCE_CURVE](bounty.c:770)。
 // 列 = 棲地類型(依 C 版原始註解排序):0=平原(Plains) 1=森林(Forest) 2=丘陵洞穴(Hill) 3=地城(Dungeon)。
-// 欄 = 該棲地類型底下,依 troopChanceTable 曲線挑出的 5 個兵種 id(由弱到強)。
-func dwellingToTroopTable() [MaxTroopDifficulty][MaxTroopChanceCurve]byte {
+// 欄 = 該棲地類型底下,依 TroopChanceTable 曲線挑出的 5 個兵種 id(由弱到強)。
+func DwellingToTroopTable() [MaxTroopDifficulty][MaxTroopChanceCurve]byte {
 	return [MaxTroopDifficulty][MaxTroopChanceCurve]byte{
 		{0x00, 0x03, 0x0b, 0x10, 0x14}, // Plains
 		{0x01, 0x06, 0x09, 0x11, 0x13}, // Forest
@@ -53,13 +55,13 @@ func dwellingToTroopTable() [MaxTroopDifficulty][MaxTroopChanceCurve]byte {
 	}
 }
 
-// troopNumbersTable 回傳每個兵種在各難度下的棲地生成隻數,
+// TroopNumbersTable 回傳每個兵種在各難度下的棲地生成隻數,
 // 移植自 C 版 troop_numbers[MAX_TROOPS][MAX_TROOP_DIFFICULTY](bounty.c:780)。
 // 列 = 兵種 id(0~24,對齊 tables_troops.go 的 troopTable() 順序),欄 = 難度(0~3)。
 // 全 0 的列(id 8/10/14/18,對照 tables_troops.go 為弓箭手/槍兵/武士/騎兵,均 Home==DwellCastle)
 // 代表該兵種不會出現在野外棲地生成;但同為城堡兵種的 id 2(義勇軍)troop_numbers 非零——
 // 這是 C 原始資料本身如此,照抄不推斷/不「修正」。
-func troopNumbersTable() [MaxTroops][MaxTroopDifficulty]byte {
+func TroopNumbersTable() [MaxTroops][MaxTroopDifficulty]byte {
 	return [MaxTroops][MaxTroopDifficulty]byte{
 		{0x0A, 0x14, 0x32, 0x64},
 		{0x14, 0x32, 0x64, 0x7F},
@@ -89,13 +91,13 @@ func troopNumbersTable() [MaxTroops][MaxTroopDifficulty]byte {
 	}
 }
 
-// continentDwellingsTable 回傳每個洲擁有哪些棲地兵種 id,
+// ContinentDwellingsTable 回傳每個洲擁有哪些棲地兵種 id,
 // 移植自 C 版 continent_dwellings[MAX_CONTINENTS][MAX_DWELLINGS](bounty.c:808)。
 //
 // C 版原始初始化只給每列前幾格顯式值(含 0xFF 結尾標記),
 // 其餘欄位在 C 靜態陣列語意下自動零填(static initializer 未列到的元素 = 0)。
 // 本表逐格照抄含零填部分,不可只搬「看得到的」前段值,否則會少填 0 而值不對齊。
-func continentDwellingsTable() [MaxContinents][MaxDwellings]byte {
+func ContinentDwellingsTable() [MaxContinents][MaxDwellings]byte {
 	return [MaxContinents][MaxDwellings]byte{
 		{0x00, 0x01, 0x07, 0x04, 0x03, 0x06, 0xFF, 0x00, 0x00, 0x00, 0x00},
 		{0x0C, 0x05, 0x0B, 0x09, 0x0F, 0x09, 0xFF, 0x00, 0x00, 0x00, 0x00},
@@ -104,10 +106,10 @@ func continentDwellingsTable() [MaxContinents][MaxDwellings]byte {
 	}
 }
 
-// dwellingRangesTable 回傳每個洲的兵種難度區間 [下限,上限](兵種 id),
+// DwellingRangesTable 回傳每個洲的兵種難度區間 [下限,上限](兵種 id),
 // 移植自 C 版 dwelling_ranges[MAX_CONTINENTS][2](bounty.c:814)。
 // 註解直接沿用 C 版原文,標明區間對應的兵種段(peasant-knight 等)。
-func dwellingRangesTable() [MaxContinents][2]byte {
+func DwellingRangesTable() [MaxContinents][2]byte {
 	return [MaxContinents][2]byte{
 		{0x00, 0x0e}, // (peasant-knight)
 		{0x01, 0x0e}, // (sprites-knight)

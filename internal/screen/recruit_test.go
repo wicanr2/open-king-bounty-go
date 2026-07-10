@@ -8,8 +8,12 @@ import (
 	"github.com/wicanr2/open-king-bounty-go/internal/kbdata"
 )
 
-// newTestRecruitScreen 用真實(embedded)assets 建一個騎士角色與 RecruitScreen(招兵種 0),
-// 供本檔測試共用。
+// newTestRecruitScreen 用真實(embedded)assets 建一個騎士角色與 RecruitScreen(棲地
+// 洲0/id0,rtype 0),供本檔測試共用。RecruitScreen 現在依 (cont,dwellingID) 即時查
+// gs.DwellingTroop/DwellingPopulation(見 recruit.go),world gen 撒鹽出來的兵種是
+// 隨機的;測試需要固定兵種 0(農夫)才能斷言造價/庫存等數字,故直接覆寫這兩格
+// 世界狀態,不依賴 salt_continent 撒出的實際結果(那部分由 gamestate 自己的
+// worldgen_test.go 驗證)。
 func newTestRecruitScreen(t *testing.T) (*RecruitScreen, *gamestate.GameState, *kbdata.Assets) {
 	t.Helper()
 	a, err := kbdata.Load("")
@@ -17,7 +21,9 @@ func newTestRecruitScreen(t *testing.T) (*RecruitScreen, *gamestate.GameState, *
 		t.Fatalf("kbdata.Load: %v", err)
 	}
 	gs := gamestate.NewGame(a, "Tester", 0, gamestate.DefaultWorldSeed)
-	return NewRecruitScreen(gs, a, 0, 0), gs, a
+	gs.DwellingTroop[0][0] = 0
+	gs.DwellingPopulation[0][0] = 999
+	return NewRecruitScreen(gs, a, 0, 0, 0), gs, a
 }
 
 // TestRecruitScreen_QuantityClampedToCap 驗證數量調整夾在 [0, cap()]:

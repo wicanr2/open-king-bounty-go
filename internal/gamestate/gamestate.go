@@ -1,8 +1,11 @@
 package gamestate
 
-// GameState 對應 C 版 src/bounty.h 的 KBgame struct。目前涵蓋玩家角色狀態與規則
-// (建角、升階、寶箱領導力、招兵、每週結算的玩家面);地圖/惡棍/城堡等世界狀態尚未納入,
-// end_week 的世界成長(巢穴/城堡/foe 增兵)因此暫緩(見 week.go TODO)。
+import "github.com/wicanr2/open-king-bounty-go/internal/kbdata"
+
+// GameState 對應 C 版 src/bounty.h 的 KBgame struct。涵蓋玩家角色狀態與規則
+// (建角、升階、寶箱領導力、招兵、每週結算的玩家面),以及 NewGame 建局時 salt_continent
+// 生成的世界狀態(可變地圖 + 棲地/敵人佈置,見下方 World generation 區塊)。
+// 城堡/惡棍/契約/船隻等世界狀態仍未納入(見 week.go TODO、docs/PORT-STATUS.md)。
 
 // Squad 是玩家隊伍裡的一格兵(對應 C 版 KBgame.player_troops[i] / player_numbers[i]
 // 這一組 parallel array 的其中一格)。TroopID == 255(0xFF)代表空格。
@@ -45,4 +48,41 @@ type GameState struct {
 	// 索引 = 法術 id(0..maxSpells-1),值 = 該法術學會次數(C 允許同一法術重複學習,
 	// 見 known_spells() 加總所有格,LearnSpell 每次呼叫只 ++ 一格,不做上限鉗制)。
 	Spells [maxSpells]int
+
+	// --- World generation(salt_continent,見 worldgen.go)---
+	//
+	// 以下欄位對應 C 版 KBgame(src/bounty.h)的世界狀態子集,由 NewGame 呼叫
+	// saltContinent 逐洲生成(棲地/敵人的其餘世界狀態,如城堡/惡棍/契約,仍未納入)。
+	// 全部 exported,故隨 GameState 一起被 encoding/json 存讀檔(internal/save)
+	// 完整持久化,不需另外擴充存檔格式。
+
+	// WorldMap 是「本局」的可變世界地圖:NewGame 時從 kbdata.Assets.World 深拷貝一份,
+	// 再讓 saltContinent 就地把 chest tile(0x8B)改寫成 dwelling/artifact/orb/telecave。
+	// 對應 C 版 spawn_game 的 `memcpy(game->map, land, ...)` + salt_continent 原地修改
+	// game->map。render 層(screen/worldmap.go)應讀這份而非唯讀的 assets.World。
+	WorldMap *kbdata.WorldMap
+
+	// DwellingCoords[cont][id] = [x,y],對應 C game->dwelling_coords[MAX_CONTINENTS][MAX_DWELLINGS][2]。
+	DwellingCoords [kbdata.MaxContinents][kbdata.MaxDwellings][2]int
+	// DwellingTroop[cont][id] = 該棲地的兵種 id,對應 C game->dwelling_troop。
+	DwellingTroop [kbdata.MaxContinents][kbdata.MaxDwellings]int
+	// DwellingPopulation[cont][id] = 該棲地目前可招募庫存,對應 C game->dwelling_population
+	// (招募時會被扣減並持久化,見 screen/recruit.go)。
+	DwellingPopulation [kbdata.MaxContinents][kbdata.MaxDwellings]int
+
+	// FoeCoords[cont][id] = [x,y],對應 C game->foe_coords[MAX_CONTINENTS][MAX_FOES][2]。
+	FoeCoords [kbdata.MaxContinents][kbdata.MaxFoes][2]int
+	// FoeTroops[cont][id][0..4] = 該敵群最多 5 格兵種 id,對應 C game->foe_troops
+	// (repopulate_foe 只填前 3 格,見 worldgen.go)。
+	FoeTroops [kbdata.MaxContinents][kbdata.MaxFoes][5]int
+	// FoeNumbers[cont][id][0..4] = 對應數量,對應 C game->foe_numbers。
+	FoeNumbers [kbdata.MaxContinents][kbdata.MaxFoes][5]int
+
+	// OrbCoords[cont] = [x,y](尋物法球位置),對應 C game->orb_coords[MAX_CONTINENTS][2]。
+	// 目前只記座標,尚未接 view_minimap/orb 撿拾流程(見 docs/PORT-STATUS.md B/C 段)。
+	OrbCoords [kbdata.MaxContinents][2]int
+	// NavmapCoords[cont] = [x,y](導航圖位置),對應 C game->map_coords[MAX_CONTINENTS][2]。
+	NavmapCoords [kbdata.MaxContinents][2]int
+	// TelecaveCoords[cont][id] = [x,y],對應 C game->teleport_coords[MAX_CONTINENTS][MAX_TELECAVES][2]。
+	TelecaveCoords [kbdata.MaxContinents][kbdata.MaxTelecaves][2]int
 }

@@ -25,19 +25,32 @@ const emptySquad = 255
 const DefaultWorldSeed uint32 = 1
 
 // NewGame 建立角色起手狀態,對應 C 版 src/play.c 的 spawn_game。
-// 涵蓋「玩家角色起手數值」(BaseLeadership/Gold/Army 等)與 salt_spells 的
-// town_spell 隨機分配;巢穴/城堡/惡棍/寶物佈置等世界生成 RNG 邏輯不在此
-// (spawn_game 呼叫 salt_spells 之後還有 salt_continent/salt_villains/
-// repopulate_castle 等,尚未移植)。難度固定 easy/rank 0。
+// 涵蓋「玩家角色起手數值」(BaseLeadership/Gold/Army 等)、salt_spells 的
+// town_spell 隨機分配,以及 salt_continent 的世界生成(棲地/敵人佈置,見
+// worldgen.go);城堡/惡棍/契約/船隻等世界狀態仍不在此(spawn_game 呼叫
+// salt_continent 之後還有 salt_villains/repopulate_castle 等,尚未移植)。
+// 難度固定 easy/rank 0。
 //
 // 忠實對齊 spawn_game:先 Rank=0,再呼叫 acceptRank(等同 C 的 player_accept_rank),
 // 由它把 classes[class][0] 的**增量**累加進 BaseLeadership/MaxSpells/SpellPower/Commission/
 // KnowsMagic(與升階共用同一條路徑);Leadership 起手 = BaseLeadership。
 //   - Gold                = starting_gold[class]
 //   - player_troops/numbers[0..1] = starting_army_troop/numbers[class];[2..4] = 0xFF/0
-//   - TownSpell            = salt_spells(rng),rng 以 seed 初始化(見 townspell.go
-//     的 parity 誠實註記:尚未逐一對齊 spawn_game 完整 rand 呼叫序列,演算法忠實
-//     但非逐 seed 對齊)。
+//   - TownSpell            = salt_spells(rng),接著 WorldMap/Dwelling*/Foe* 等 =
+//     salt_continent(rng) 逐洲跑(對齊 C spawn_game 呼叫順序:salt_spells 之後、
+//     salt_villains 之前),rng 為同一個 kbrng 實例延續消耗(對齊 C 同一個 rand()
+//     資料流,見下方 parity 誠實註記)。
+//
+// world seed / RNG parity 誠實註記(同 townspell.go 的 saltSpells 註記,範圍擴大到
+// 世界生成):C 版 spawn_game 是一長串固定順序的 rand() 呼叫(角色起手不耗用 rand、
+// salt_spells 耗用一段、salt_continent 每洲各耗用一段、salt_villains/repopulate_castle
+// 還會再耗用)。本移植目前只重現到 salt_spells + salt_continent 這段呼叫序列,
+// 尚未移植 salt_villains/repopulate_castle(它們不消耗獨立 rand 流,只是還沒實作),
+// 所以「同一個 seed 在 C/Go 兩邊得到完全相同的世界佈置」仍不保證逐 seed 對齊
+// (C 版本身在 salt_continent 之前已經呼叫過 scepter 相關的 rand,而 Go 版
+// NewGame 尚未移植 scepter 佈置,兩邊呼叫序列在那之前就已經分岔)——但
+// salt_continent/populate_dwelling/repopulate_foe/roll_creature 演算法本身
+// (放置規則、roll 範圍與型別、population 計算)逐句忠實對齊 C,行為性質一致。
 func NewGame(a *kbdata.Assets, name string, class int, seed uint32) *GameState {
 	gs := &GameState{
 		Name:  name,
@@ -63,5 +76,30 @@ func NewGame(a *kbdata.Assets, name string, class int, seed uint32) *GameState {
 	rng := kbrng.NewGlibc(seed)
 	gs.TownSpell = saltSpells(rng)
 
+	// 世界生成:a.World 是 nil-safe 的(kbdata.Load("") 純邏輯測試不帶地圖檔時
+	// a.World == nil),沒有地圖就跳過,保持既有「缺資料不 panic」慣例。
+	if a != nil && a.World != nil {
+		gs.WorldMap = copyWorldMap(a.World)
+		for cont := 0; cont < kbdata.MaxContinents; cont++ {
+			// 對齊 C spawn_game:`salt_continent(game, i, 2, 1, 1, 2, 10, 5);`
+			// (2 artifact / 1 navmap / 1 orb / 2 telecave / 10 dwelling / 5 friendly)。
+			gs.saltContinent(a, rng, cont, 2, 1, 1, 2, 10, 5)
+		}
+	}
+
 	return gs
+}
+
+// copyWorldMap 深拷貝 kbdata.WorldMap,讓 salt_continent 能就地修改而不動到
+// 唯讀的 kbdata.Assets.World(同一份 assets 可能被多個存檔/角色共用)。
+func copyWorldMap(src *kbdata.WorldMap) *kbdata.WorldMap {
+	if src == nil {
+		return nil
+	}
+	dst := &kbdata.WorldMap{
+		Continents: src.Continents,
+		Tiles:      make([][kbdata.LevelH][kbdata.LevelW]byte, len(src.Tiles)),
+	}
+	copy(dst.Tiles, src.Tiles) // 陣列值複製(非共享底層),[LevelH][LevelW]byte 是值型別
+	return dst
 }

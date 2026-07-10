@@ -17,43 +17,63 @@ import (
 // 招募流程內,故不列)。
 var dwellingNames = [...]string{"平原", "森林", "山丘", "地下城"}
 
-// demoDwellingPopulationCap 是棲地「可招募庫存」的暫代值,對應 C
-// game->dwelling_population[continent][id]。世界狀態 land.ini 的 dwelling 區塊尚未
-// 解析,無法得知真實庫存,故用固定佔位;每次成功招募會遞減(對齊 C 買完扣庫存的
-// 行為),但只存在於本畫面實例內,離開後不持久(非真實世界狀態)。
-// TODO: 改為讀世界狀態的 dwelling_population(依 continent/dwelling id 對應)。
-const demoDwellingPopulationCap = 30
-
 // RecruitScreen 是招兵(棲地)畫面,對齊 C visit_dwelling()/draw_location()/
 // draw_sidebar()(game.c:2991-3093):頂列「按 'ESC' 離開」+ 棲地背景(依 rtype
 // 換 plai/frst/cave/dngn)+ 迎賓兵種(即被招募的兵種本身,frame 恆 0,非動畫)+
 // 右側 sidebar + 底部選單框(表頭棲地名+底線/可招募/造價+GP/上限/招募數量)。
 //
-// 世界狀態不足處(見 demoDwellingPopulationCap 與呼叫端 worldmap.go 的
-// demoRecruitTroopID 注解):棲地實際教哪個兵種、真實庫存都需要尚未解析的
-// land.ini 世界狀態,先用合理佔位讓畫面/流程走通。
+// 兵種與庫存改讀真實世界狀態 gs.DwellingTroop[cont][id] / gs.DwellingPopulation[cont][id]
+// (由 gamestate.NewGame 呼叫 saltContinent 生成,見 internal/gamestate/worldgen.go),
+// 取代舊版 demoRecruitTroopID/demoDwellingPopulationCap 佔位。cont/dwellingID 由呼叫端
+// worldmap.go 依踩到的棲地座標查出(對齊 C visit_dwelling 的線性掃描)。
 type RecruitScreen struct {
-	gs      *gamestate.GameState
-	assets  *kbdata.Assets
-	troopID int
-	rtype   int // 棲地類型 0=平原 1=森林 2=山丘 3=地下城,對應 C draw_location(2+rtype,...) 與 dwelling_names[rtype]
+	gs         *gamestate.GameState
+	assets     *kbdata.Assets
+	cont       int // 洲別,查 gs.DwellingTroop/DwellingPopulation 用
+	dwellingID int // 棲地 id(該洲內),同上
+	rtype      int // 棲地類型 0=平原 1=森林 2=山丘 3=地下城,對應 C draw_location(2+rtype,...) 與 dwelling_names[rtype]
 
-	population int // 佔位庫存(見 demoDwellingPopulationCap 注解),成功招募後遞減
-	sel        int // 目前選定的招募數量(0..cap())
-	msg        string
+	sel int // 目前選定的招募數量(0..cap())
+	msg string
 }
 
-// NewRecruitScreen 建立招兵畫面,初始數量為 0,庫存佔位滿額。
-func NewRecruitScreen(gs *gamestate.GameState, a *kbdata.Assets, troopID, rtype int) *RecruitScreen {
-	return &RecruitScreen{gs: gs, assets: a, troopID: troopID, rtype: rtype, population: demoDwellingPopulationCap}
+// NewRecruitScreen 建立招兵畫面,初始數量為 0。兵種/庫存不在建構時快取,
+// 每次讀取都直接查 gs.DwellingTroop/DwellingPopulation(對齊 C 版直接查
+// game->dwelling_troop/dwelling_population,不快取複本)。
+func NewRecruitScreen(gs *gamestate.GameState, a *kbdata.Assets, cont, dwellingID, rtype int) *RecruitScreen {
+	return &RecruitScreen{gs: gs, assets: a, cont: cont, dwellingID: dwellingID, rtype: rtype}
+}
+
+// validDwelling 回報 cont/dwellingID 是否為合法索引且 gs 已就緒(nil-safe 防呆)。
+func (s *RecruitScreen) validDwelling() bool {
+	return s.gs != nil &&
+		s.cont >= 0 && s.cont < kbdata.MaxContinents &&
+		s.dwellingID >= 0 && s.dwellingID < kbdata.MaxDwellings
+}
+
+// troopID 回傳目前棲地教的兵種 id,對應 C `game->dwelling_troop[game->continent][id]`。
+func (s *RecruitScreen) troopID() int {
+	if !s.validDwelling() {
+		return 0
+	}
+	return s.gs.DwellingTroop[s.cont][s.dwellingID]
+}
+
+// population 回傳目前棲地可招募庫存,對應 C `game->dwelling_population[game->continent][id]`。
+func (s *RecruitScreen) population() int {
+	if !s.validDwelling() {
+		return 0
+	}
+	return s.gs.DwellingPopulation[s.cont][s.dwellingID]
 }
 
 // troop 回傳目前招募兵種的靜態資料,索引越界或資產未載入時回傳零值(nil-safe)。
 func (s *RecruitScreen) troop() kbdata.Troop {
-	if s.assets == nil || s.troopID < 0 || s.troopID >= len(s.assets.Troops) {
+	id := s.troopID()
+	if s.assets == nil || id < 0 || id >= len(s.assets.Troops) {
 		return kbdata.Troop{}
 	}
-	return s.assets.Troops[s.troopID]
+	return s.assets.Troops[id]
 }
 
 // dwellingName 回傳 rtype 對應的棲地中文名,越界回傳空字串。
@@ -68,19 +88,21 @@ func (s *RecruitScreen) dwellingName() string {
 // max = army_max_troop_count(game, troop_id)(game.c:3030)——純看領導力,不看金錢
 // (金錢不足由 BuyTroop 回傳 ErrNotEnoughGold 另外處理,對齊 C buy_troop 分工)。
 func (s *RecruitScreen) leadershipMax() int {
-	if s.gs == nil || s.assets == nil || s.troopID < 0 || s.troopID >= len(s.assets.Troops) {
+	id := s.troopID()
+	if s.gs == nil || s.assets == nil || id < 0 || id >= len(s.assets.Troops) {
 		return 0
 	}
-	return s.gs.ArmyMaxTroopCount(s.assets, s.troopID)
+	return s.gs.ArmyMaxTroopCount(s.assets, id)
 }
 
 // cap 回傳步進器(D-pad 調數量,觸控適配,見下方 Keymap 注解)的上限:
-// 領導力上限與庫存佔位兩者取小,對應 C 輸入迴圈 `if (number > max) continue;`
-// 與 `if (number > dwelling_population) continue;` 兩道獨立限制。
+// 領導力上限與真實棲地庫存(gs.DwellingPopulation)兩者取小,對應 C 輸入迴圈
+// `if (number > max) continue;` 與 `if (number > dwelling_population) continue;`
+// 兩道獨立限制。
 func (s *RecruitScreen) cap() int {
 	max := s.leadershipMax()
-	if s.population < max {
-		return s.population
+	if pop := s.population(); pop < max {
+		return pop
 	}
 	return max
 }
@@ -107,7 +129,7 @@ func (s *RecruitScreen) Update(a input.Action) Transition {
 			s.msg = "數量為 0,未招募"
 			return Stay()
 		}
-		if err := s.gs.BuyTroop(s.assets, s.troopID, s.sel); err != nil {
+		if err := s.gs.BuyTroop(s.assets, s.troopID(), s.sel); err != nil {
 			switch err {
 			case gamestate.ErrNotEnoughGold:
 				s.msg = "你的金幣不足！" // 對齊 C KB_BottomBox("\n\n\n你的金幣不足！", ...)
@@ -118,7 +140,12 @@ func (s *RecruitScreen) Update(a input.Action) Transition {
 			}
 			return Stay()
 		}
-		s.population -= s.sel
+		// 持久扣減世界狀態的棲地庫存,對齊 C game.c:3080
+		// `game->dwelling_population[game->continent][id] -= number;`(買完直接寫回
+		// game 本體,不是只存在本畫面的複本——離開棲地再回來庫存仍反映扣減)。
+		if s.validDwelling() {
+			s.gs.DwellingPopulation[s.cont][s.dwellingID] -= s.sel
+		}
 		s.msg = "已招募"
 		s.sel = 0
 	case input.ActCancel:
@@ -140,7 +167,7 @@ func (s *RecruitScreen) drawLocation(dst *ebiten.Image) {
 	if bg != nil {
 		render.DrawTile(dst, bg, mapX, mapY)
 	}
-	sp := troopSpriteFor(s.troopID)
+	sp := troopSpriteFor(s.troopID())
 	if sp == nil || bg == nil {
 		return
 	}
@@ -170,7 +197,7 @@ func (s *RecruitScreen) menuLines() []string {
 		"           " + name,
 		"           " + strings.Repeat("-", len(name)),
 		"",
-		fmt.Sprintf("可招募 %d 名%s", s.population, troop.Name),
+		fmt.Sprintf("可招募 %d 名%s", s.population(), troop.Name),
 		fmt.Sprintf("每名造價=% 3d      GP=%dK", troop.GoldCost, gold/1000),
 		fmt.Sprintf("你最多可招募 %d 名", s.leadershipMax()),
 		fmt.Sprintf("招募數量        %d", s.sel),

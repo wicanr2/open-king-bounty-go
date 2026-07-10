@@ -89,9 +89,13 @@ func TestWorldMapScreen_LoadWithoutSave_NoPanic(t *testing.T) {
 }
 
 // TestWorldMapScreen_DwellingPushesRecruit 驗證踩到棲地 tile 會 Push RecruitScreen。
+//
+// 找棲地 tile 要掃 gs.WorldMap(NewGame 跑過 salt_continent 之後的地圖),不能掃
+// a.World(唯讀、salt 前的原始 land.org——根本沒有 dwelling tile,見
+// gamestate/worldgen.go 與 docs/PORT-STATUS.md「世界生成架構計畫」的調查記錄)。
 func TestWorldMapScreen_DwellingPushesRecruit(t *testing.T) {
-	s, _, a := newTestWorldMapScreen(t)
-	if a.World == nil {
+	s, gs, a := newTestWorldMapScreen(t)
+	if a.World == nil || gs.WorldMap == nil {
 		t.Skip("land.org 未載入,略過需要世界地圖的測試")
 	}
 
@@ -99,7 +103,7 @@ func TestWorldMapScreen_DwellingPushesRecruit(t *testing.T) {
 	found := false
 	for y := 0; y < kbdata.LevelH && !found; y++ {
 		for x := 1; x < kbdata.LevelW; x++ {
-			tile := a.World.Tile(0, x, y)
+			tile := gs.WorldMap.Tile(0, x, y)
 			if tile >= kbdata.TileDwelling1 && tile <= kbdata.TileDwelling4 {
 				s.px, s.py = x-1, y
 				found = true

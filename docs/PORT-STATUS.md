@@ -23,6 +23,7 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 | CJK 雙層合成 | env-sdl cjk overlay | render/cjktext.go |
 | **軍隊檢視** | view_army | viewarmy.go(+ gamestate/morale.go:troop_morale/morale_chart/morale_names) |
 | **角色檢視** | view_character | viewcharacter.go(班底立繪 + 數值框 + 底部道具帶;player_captured/num_artifacts/castles/score/followers_killed 為世界狀態佔位 0,artifact_found 全空、continent_found 僅 home 洲) |
+| **世界生成(salt_continent)** | salt_continent/populate_dwelling/repopulate_foe/roll_creature(play.c:28-330) | gamestate/worldgen.go(NewGame 逐洲跑,填 gs.WorldMap + Dwelling*/Foe*/Orb/Navmap/Telecave 座標;worldmap.go/recruit.go 接線讀真實世界狀態,取代舊 placeholderFoe/demoRecruitTroopID 佔位) |
 
 ## ⬜ 剩餘畫面(以 C 源為規格逐一移植)
 
@@ -53,44 +54,45 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 
 ## ⬜ 世界狀態(foundational — 解鎖上面多個畫面的真實動作邏輯)
 
-目前多畫面的動作是「佔位 stub」(town 的契約/租船/情報、recruit 的兵種/庫存、
-worldmap 的 foe/dwelling)。要讓它們變真實,需把 C spawn_game/salt_continent
-的世界生成移植進 gamestate.NewGame:
+recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent 生成的真實世界狀態
+(見下方「世界生成」段);town 的契約/租船/情報仍是「佔位 stub」,要讓它們變真實,
+還需要把 C spawn_game 剩下的 contract/boat/castle/villain 世界生成移植進 gamestate.NewGame:
 
 - [ ] **contract / villain** 系統(contract 循環、villain 位置、view_contract/sidebar 頭像)
 - [ ] **boat**(租船 + 航行 + 上下船)
-- [ ] **castle** 世界狀態(castle_owner/troops/numbers、repopulate_castle)
-- [ ] **dwelling** 真實兵種 + 庫存(populate_dwelling/dwelling_population;取代 recruit 的佔位)
-- [ ] **foe** 真實部隊(foe_troops/foe_numbers;取代 worldmap 的 placeholderFoe)
-- [ ] **artifact / scepter**(拼圖、尋寶、破關條件)
+- [ ] **castle** 世界狀態(castle_owner/troops/numbers、repopulate_castle、salt_villains)
+- [x] **dwelling** 真實兵種 + 庫存(populate_dwelling/dwelling_population;recruit.go 已讀真實世界狀態)
+- [x] **foe** 真實部隊(foe_troops/foe_numbers;worldmap.go 已讀真實世界狀態,取代 placeholderFoe)
+- [ ] **artifact / scepter**(拼圖、尋寶、破關條件;座標已記錄於 map tile,尚未接 UI/撿拾邏輯)
 - [ ] **sidebar 動態內容**(contract 頭像、拼圖 piece 疊圖 — 需 B/世界狀態)
 
-### ★世界生成架構計畫(調查後,2026-07-10)
+### 世界生成(salt_continent)——已完成(2026-07-10)
 
-**關鍵發現**:Go 的 raw land.org 是 **salt 前**的地圖(land_test.go 證實:178 個 chest 0x8B
-+ 92 個 foe 0x91,**無 dwelling tile**)。C 的 dwelling/artifact/orb/telecave 都是
-`salt_continent`(play.c:183)在建遊戲時**把 chest tile 轉成**的。**Go 尚未移植 salt_continent**
-→ 所以正常遊玩中 dwelling 根本不出現(recruit 只能靠 -startrecruit debug flag 到)、
-foe 也用 placeholderFoe。
+移植自 `salt_continent`/`populate_dwelling`/`enforce_dwelling`/`repopulate_foe`/`roll_creature`
+(play.c:28-330),見 `internal/gamestate/worldgen.go`。逐句對照 C,細節/怪癖照抄:
 
-**移植架構**(下一步邏輯移植照此做):
-1. **gamestate 持有 per-game 可變地圖** `gs.Map`(NewGame 時 copy assets.World → gs.Map),
-   因為 salt 會 mutate 地圖(chest→dwelling)。worldmap.go 改讀 `gs.Map` 而非 assets.World(共享唯讀)。
-2. **NewGame 跑 salt_continent**(移植 play.c:183-330 的 chest 掃描 + 放置):
-   salt_continent(game, cont, 2 artifact,1 navmap,1 orb,2 telecave,10 dwelling,5 friendly)。
-   放置時用 kbdata 的世界生成表(dwelling_ranges/continent_dwellings/dwelling_to_troop 等,
-   go-worldgen-tables 正在移植)+ populate_dwelling(play.c:50)+ repopulate_foe/roll_creature(play.c:28/89)。
-3. **gamestate 加地圖級陣列**:DwellingCoords/Troop/Population、FoeCoords/Troops/Numbers
-   (per continent),NewGame 填好。
-4. **存讀檔**:salt 是 deterministic(給定 seed+map)→ 存檔存 world seed,load 時**用該 seed 重跑 salt**
-   還原世界,避免擴充存檔格式(同 roguelike 存 seed 的做法)。
-5. **接線**:recruit 讀 gs.DwellingTroop/Population(取代 demo 佔位);worldmap combat 讀
-   gs.FoeTroops/Numbers(取代 placeholderFoe)。
-6. **RNG parity**:同 salt_spells——NewGame 未逐一重現 spawn_game 完整 rand 序列,故非逐 seed
-   對齊 C,但演算法忠實(放置規則/roll 範圍/型別一致)。誠實標註。
+- **gs.WorldMap**:NewGame 時深拷貝 `assets.World`(`copyWorldMap`),salt 就地 mutate 這份拷貝,
+  不動唯讀的 `kbdata.Assets.World`。worldmap.go/recruit.go 已改讀 `gs.WorldMap`/`gs.Dwelling*`/`gs.Foe*`。
+- **世界狀態欄位**:DwellingCoords/Troop/Population、FoeCoords/Troops/Numbers、OrbCoords/
+  NavmapCoords/TelecaveCoords(gamestate.go),全部 exported,隨 GameState 一起被
+  encoding/json 存讀檔完整持久化——**未擴充存檔格式**(當初計畫的「存 seed 重跑 salt」方案
+  最終改採「直接持久化整份世界狀態」,更簡單且不必擔心 RNG parity 隨版本改動而讓存檔重播出不同世界)。
+- **NewGame 呼叫**:`salt_spells` 之後、`for cont := range 4 { gs.saltContinent(a, rng, cont, 2,1,1,2,10,5) }`
+  ——沿用同一個 kbrng 實例延續消耗(RNG parity 誠實註記見 newgame.go/worldgen.go 內文,尚未逐一
+  對齊 spawn_game 完整 rand 呼叫序列)。
+- **驗收**:單元測試(gamestate/worldgen_test.go)+ 桌面截圖(Xvfb + xdotool 實際走位,
+  踩進真實生成的地下城棲地,recruit 畫面顯示「骷髏兵/150隻/造價40」,與程式化 dump 逐字對上)。
 
-> 這塊 correctness 敏感(RNG + 地圖 mutation + 存檔),分兩步:①資料表(go-worldgen-tables,進行中)
-> ②生成邏輯 + 每局地圖 + 接線(下一個專項,旗艦嚴審)。
+**移植過程中發現並修正的既有勘誤(non-obvious,值得留存)**:
+1. `kbdata.Troop` 的 `Growth`/`MoraleTop` 兩欄位命名與 C 版 `KBtroop.max_population`/`growth`
+   語意對調(數值搬得對,名字寫反),已更正為 `MaxPopulation`/`Growth`(見 assets.go 欄位勘誤註記)。
+2. `kbdata.Dwelling` 列舉數值原本以 `DwellCastle=0` 起算,對不上 C 版 `DWELLING_PLAINS=0..
+   DWELLING_CASTLE=4` 的實際數值(populate_dwelling 直接拿這個數值做 tile 運算,不是純標籤),
+   已更正 iota 順序對齊 C。
+3. **確認一個 C 原始資料本身的既有怪癖(非本次移植引入)**:洲2的 `dwelling_ranges=[2,14]`
+   涵蓋 troop id=2(義勇軍,Home=Castle),隨機 roll 到它時 tile = `TileDwelling1+4=0x90`
+   撞進 `TileSignpost` 的數值——桌面截圖驗收時實測命中此案例(continent=2 id=4,seed=1),
+   已在 worldgen.go/worldgen_test.go 逐句記錄成因,不視為 bug、不「修正」遊戲邏輯本身。
 
 ## 建議優先序
 

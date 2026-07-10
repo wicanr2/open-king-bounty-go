@@ -16,9 +16,9 @@ func TestTroopZeroPeasant(t *testing.T) {
 	peasant := troops[0]
 
 	tests := []struct {
-		name  string
-		got   interface{}
-		want  interface{}
+		name string
+		got  interface{}
+		want interface{}
 	}{
 		{"Name", peasant.Name, "農夫"},
 		{"SkillLevel", peasant.SkillLevel, 1},
@@ -30,8 +30,8 @@ func TestTroopZeroPeasant(t *testing.T) {
 		{"Spoils", peasant.Spoils, 1},
 		{"Home", peasant.Home, DwellPlains},
 		{"Abilities", peasant.Abilities, Ability(0)},
-		{"Growth", peasant.Growth, 250},
-		{"MoraleTop", peasant.MoraleTop, 6},
+		{"MaxPopulation", peasant.MaxPopulation, 250},
+		{"Growth", peasant.Growth, 6},
 		{"MoraleGroup", peasant.MoraleGroup, 0},
 	}
 
@@ -48,9 +48,9 @@ func TestTroopLastDragon(t *testing.T) {
 	dragon := troops[24]
 
 	tests := []struct {
-		name  string
-		got   interface{}
-		want  interface{}
+		name string
+		got  interface{}
+		want interface{}
 	}{
 		{"Name", dragon.Name, "火龍"},
 		{"SkillLevel", dragon.SkillLevel, 6},
@@ -62,8 +62,8 @@ func TestTroopLastDragon(t *testing.T) {
 		{"Spoils", dragon.Spoils, 500},
 		{"Home", dragon.Home, DwellHillCave},
 		{"Abilities", dragon.Abilities, AbilFly | AbilImmune},
-		{"Growth", dragon.Growth, 25},
-		{"MoraleTop", dragon.MoraleTop, 1},
+		{"MaxPopulation", dragon.MaxPopulation, 25},
+		{"Growth", dragon.Growth, 1},
 		{"MoraleGroup", dragon.MoraleGroup, 3},
 	}
 
@@ -93,9 +93,9 @@ func TestClassKnight(t *testing.T) {
 	knight := classes[0][0]
 
 	tests := []struct {
-		name  string
-		got   interface{}
-		want  interface{}
+		name string
+		got  interface{}
+		want interface{}
 	}{
 		{"Name", knight.Name, "武士"},
 		{"Leadership", knight.Leadership, 100},
@@ -118,15 +118,15 @@ func TestClassSorceressLast(t *testing.T) {
 	archMage := classes[2][3]
 
 	tests := []struct {
-		name  string
-		got   interface{}
-		want  interface{}
+		name string
+		got  interface{}
+		want interface{}
 	}{
 		{"Name", archMage.Name, "大法師"},
-		{"Leadership", archMage.Leadership, 300}, // C 增量 +300(累積後 600)
+		{"Leadership", archMage.Leadership, 300},  // C 增量 +300(累積後 600)
 		{"Commission", archMage.Commission, 1000}, // C 增量 +1000(累積後 6000)
 		{"MaxSpell", archMage.MaxSpell, 12},       // C 增量 +12(累積後 35)
-		{"SpellPower", archMage.SpellPower, 5},     // C 增量 +5(累積後 15)
+		{"SpellPower", archMage.SpellPower, 5},    // C 增量 +5(累積後 15)
 	}
 
 	for _, tt := range tests {

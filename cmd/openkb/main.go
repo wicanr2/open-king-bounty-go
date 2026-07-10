@@ -42,7 +42,12 @@ func rootScreen(a *kbdata.Assets) screen.Screen {
 	}
 	if *startRecruit {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
-		return screen.NewRecruitScreen(gs, a, *recruitTroop, *recruitRtype)
+		// debug 直接進招兵:世界生成(saltContinent)已把洲0棲地0撒成隨機兵種,
+		// 這裡覆寫成 -recruittroop 指定值,讓截圖驗證能固定看到想測的兵種
+		// (對齊 recruit_test.go 的同一手法:直接寫世界狀態,不依賴實際撒鹽結果)。
+		gs.DwellingTroop[0][0] = *recruitTroop
+		gs.DwellingPopulation[0][0] = 999
+		return screen.NewRecruitScreen(gs, a, 0, 0, *recruitRtype)
 	}
 	if *startViewArmy {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
