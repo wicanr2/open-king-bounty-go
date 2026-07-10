@@ -46,7 +46,8 @@ func PrepareUnitsPlayer(c *Combat, side int, gs *gamestate.GameState, a *kbdata.
 			c.Spoils[side] += a.Troops[squad.TroopID].Spoils * 5 * squad.Count
 		}
 	}
-	c.Powers[side] = 0
+	// 神器加成:OR 所有已拾得神器的 power 位元(對齊 C prepare_units_player play.c:1141)。
+	c.Powers[side] = byte(gs.ArtifactPowers(a))
 }
 
 // PrepareUnitsFoe 把敵方隊伍佈上棋盤,對應 C 版 prepare_units_foe(src/play.c:1109-1128)。

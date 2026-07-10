@@ -38,6 +38,20 @@ func (gs *GameState) HasPower(a *kbdata.Assets, power int) bool {
 	return false
 }
 
+// ArtifactPowers 回傳玩家所有已拾得神器能力位元的 OR 總和,對齊 C prepare_units_player
+// (play.c:1138-1141)的 `war->powers[side] |= artifact_powers[i]`。戰鬥佈陣時填入
+// combat.Powers,讓 INCREASED_DAMAGE/QUARTER_PROTECTION 等生效。
+func (gs *GameState) ArtifactPowers(a *kbdata.Assets) int {
+	arts := LoadArtifacts(a)
+	power := 0
+	for i := range arts {
+		if arts[i].ID < len(gs.ArtifactFound) && gs.ArtifactFound[arts[i].ID] != 0 {
+			power |= arts[i].PowerFlag()
+		}
+	}
+	return power
+}
+
 // ArtifactPickup 描述拾取神器的結果(供 UI 顯示名稱/描述)。
 type ArtifactPickup struct {
 	Found bool
