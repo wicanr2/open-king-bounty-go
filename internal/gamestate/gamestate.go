@@ -36,6 +36,12 @@ type GameState struct {
 
 	Week int // 已過週數;end_week 每次遞增,用於「每 4 週補農夫」判定(C: week_id = passed_days/WEEK_DAYS)
 
+	// 失竊權杖(破關目標)位置,對應 C game->scepter_continent/scepter_x/scepter_y。
+	// 由 NewGame 隨機埋在某洲的某片草地(PlaceScepter);玩家走到該格搜索即獲勝。
+	ScepterContinent int
+	ScepterX         int
+	ScepterY         int
+
 	// TimeStop = 停時術剩餘回合數(對應 C game->time_stop):>0 時世界地圖走路不耗天數
 	// (見 worldmap 移動)、戰鬥中敵方跳過。由 SPELL_TIMESTOP 施放累加(spell_power*10)。
 	TimeStop int
@@ -123,6 +129,10 @@ type GameState struct {
 	// 對應 C game->castle_visited[MAX_CASTLES](bounty.h:126)。select_gate 傳送目的地
 	// 清單只列已造訪城堡。
 	CastleVisited [kbdata.MaxCastles]byte
+
+	// ArtifactFound[id] = 是否已拾得該神器(對應 C game->artifact_found[MAX_ARTIFACTS]);
+	// HasPower 掃這個判斷神器加成(降租金/戰鬥威力等),view_puzzle 拼圖也靠它揭示。
+	ArtifactFound [maxArtifacts]byte
 
 	// TownVisited[id] = 玩家是否曾造訪過該鄉鎮(進城時設 1),對應 C game->town_visited。
 	// SPELL_TOWNGATE 傳送目的清單只列已造訪的鎮。

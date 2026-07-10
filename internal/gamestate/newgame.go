@@ -133,6 +133,12 @@ func NewGame(a *kbdata.Assets, name string, class int, seed uint32) *GameState {
 		}
 	}
 
+	// 埋藏失竊權杖(破關目標,對齊 C spawn_game play.c:387-389)。放在世界生成之後
+	// (掃已就緒的 gs.WorldMap 找草地);⚠ parity 誠實見 PlaceScepter 註記。
+	if gs.WorldMap != nil {
+		gs.PlaceScepter(rng)
+	}
+
 	return gs
 }
 

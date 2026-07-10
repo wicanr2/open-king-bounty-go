@@ -175,6 +175,9 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 				return Push(NewChooseSpellScreen(s.gs, s.assets))
 			}
 			return Stay()
+		case 'g':
+			// 搜索當地(對齊 C KEY_ACT(SEARCH)→ask_search):站在權杖埋藏處搜索即破關。
+			return Push(NewSearchScreen(s.gs, s.assets))
 		}
 	}
 
@@ -275,6 +278,12 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 	// 踩到路標 → 讀告示(對齊 C read_signpost,game.c:3095):疊上 SignpostScreen。
 	if tile == kbdata.TileSignpost {
 		return Push(NewSignpostScreen(s.gs, s.assets))
+	}
+	// 踩到神器 → 拾取(對齊 C take_artifact,game.c:3332):num = tile - TileArtifact1
+	// (本洲第 0 或第 1 個神器),套用能力後疊上 ArtifactScreen 顯示描述。
+	if tile == kbdata.TileArtifact1 || tile == kbdata.TileArtifact2 {
+		pickup := s.gs.TakeArtifact(s.assets, int(tile-kbdata.TileArtifact1))
+		return Push(NewArtifactScreen(s.gs, s.assets, pickup))
 	}
 	// 踩到寶箱 → 開箱(對齊 C take_chest,game.c:3167):判定海圖/寶珠/寶藏並套用,
 	// 疊上 ChestScreen 顯示結果(金幣類讓玩家選 A/B)。TakeChest 內已清掉寶箱 tile。
@@ -455,6 +464,11 @@ func (s *WorldMapScreen) Keymap() input.Keymap {
 		{Rune: 'v', Label: "軍隊"},
 		{Rune: 'c', Label: "角色"},
 		{Rune: 'd', Label: "解散"},
+		{Rune: 'g', Label: "搜索"},
+	}
+	// 會魔法時多一顆施法鈕(對齊 C 世界地圖施法鍵僅在會魔法時有意義)。
+	if s.gs != nil && s.gs.KnowsMagic {
+		letters = append(letters, input.LetterItem{Rune: 'z', Label: "施法"})
 	}
 	// 乘船時多一顆「換洲」(對齊 C:navigate_continent 僅 mount==SAIL 可用)。
 	if s.gs != nil && s.gs.Mount == gamestate.KBMountSail {

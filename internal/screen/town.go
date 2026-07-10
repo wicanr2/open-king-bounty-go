@@ -167,7 +167,7 @@ func (s *TownScreen) rentBoat() {
 		return
 	}
 	s.mode = townModeLearnResult // 沿用「訊息保留」子畫面顯示結果一行
-	switch s.gs.RentOrCancelBoat(s.town) {
+	switch s.gs.RentOrCancelBoat(s.assets, s.town) {
 	case gamestate.RentNotEnoughGold:
 		s.learnMsg = []string{"你的金幣不足！"}
 	case gamestate.RentMustDisembark:
@@ -258,11 +258,11 @@ func (s *TownScreen) menuLines() []string {
 	boatLine := fmt.Sprintf("B) 租船 (%d 週) ", costBoatExpensive)
 	if s.gs != nil {
 		gold = s.gs.Gold
-		// 對齊 C:已租船顯示「取消租船」,未租船顯示租金(gs.BoatCost)。
+		// 對齊 C:已租船顯示「取消租船」,未租船顯示租金(有海權之錨則便宜價)。
 		if s.gs.HasBoat() {
 			boatLine = "B) 取消租船"
 		} else {
-			boatLine = fmt.Sprintf("B) 租船 (%d 週) ", s.gs.BoatCost())
+			boatLine = fmt.Sprintf("B) 租船 (%d 週) ", s.gs.BoatCostWith(s.assets))
 		}
 	}
 	return []string{
