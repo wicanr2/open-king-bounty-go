@@ -75,6 +75,11 @@ func rootScreen(a *kbdata.Assets) screen.Screen {
 	}
 	if *startClass >= 0 && *startClass < 4 {
 		gs := gamestate.NewGame(a, "Sir Loin", *startClass, gamestate.DefaultWorldSeed)
+		// debug:-contractvillain 可設定當前契約,讓 sidebar 契約格截圖驗證能看到
+		// villain 臉(起手 Contract 恆 0xFF、sidebar 契約格空框)。
+		if *contractVillain >= 0 && *contractVillain < kbdata.MaxVillains {
+			gs.Contract = byte(*contractVillain)
+		}
 		return screen.NewWorldMapScreen(gs, a)
 	}
 	if *startSelect {

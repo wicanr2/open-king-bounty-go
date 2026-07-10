@@ -27,7 +27,7 @@ const townFrameDivisor = 10
 // drawSidebar 畫右側資訊欄(對齊 C draw_sidebar,game.c:1119-1210):sidebar.png
 // 13 幀(48×34)由上而下堆疊在 map 右側(x=256,y=21 起):
 //
-//	幀8=合約框(暫無 contract 系統,恆顯示空框,不疊 villain 臉)
+//	幀8=合約框;contract != 0xFF 時疊上目標 villain 臉(VillainFace,frame 動畫)
 //	幀9=攻城武器圖示(暫無欄位,恆顯示「未擁有」幀)
 //	幀10/(4+frame)=魔法星:依 GameState.KnowsMagic,有魔法時走 4-7 四幀循環
 //	幀11=拼圖地圖框(靜態)
@@ -47,7 +47,14 @@ func drawSidebar(dst *ebiten.Image, gs *gamestate.GameState, frame int) {
 	knowsMagic := gs != nil && gs.KnowsMagic
 
 	y := mapY // 21,對齊地圖頂
-	sidebarSprite.DrawFrame(dst, 8, sx, y)
+	sidebarSprite.DrawFrame(dst, 8, sx, y) // 幀8=契約框
+	// 契約臉:對齊 C draw_sidebar(game.c:1147)——contract != 0xFF 時,把目標
+	// villain 的臉(GR_VILLAIN[contract],frame 動畫)疊在契約框上(不去背,整格覆蓋)。
+	if gs != nil && gs.Contract != 0xFF {
+		if face := VillainFace(int(gs.Contract)); face != nil {
+			face.DrawFrame(dst, frame, sx, y)
+		}
+	}
 	y += mapTileH
 	sidebarSprite.DrawFrame(dst, 9, sx, y)
 	y += mapTileH
