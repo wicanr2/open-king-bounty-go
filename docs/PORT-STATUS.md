@@ -318,7 +318,26 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
 - [x] **DOS 主題(DOS 當預設)**——✅ 完成(2026-07-10):`scripts/extract-dos-theme.sh`
       (kbcc 拆 256.CC → free 命名 .256;MCGA.DRV@0x032D VGA 調色盤;kbview 轉 PNG)→ `data/dos/`(61 張)。
       桌面 Xvfb 實測世界地圖 + 戰鬥 DOS 美術正確、sprite 去背正確、DOS 為預設。
+- [x] **Android 觸控切主題入口**——✅ 完成(2026-07-10):`input/touch.go` 右上全域「主題」鈕
+      (ActThemeCycle,觸控無 F8)。桌面 Xvfb + **Android 模擬器實機**驗證:APK 開機為 DOS 版
+      NWC logo(DOS 預設 embed),點「主題」鈕 swipe-hold 循環 DOS→Amiga→free(genesis 缺席跳過),
+      主題/作弊鈕與新 atlas 字集均正確渲染。
 - [ ] **Genesis 主題**:`kb.bin` ROM 走 `md-rom.c`(不同管線,且 C 版僅 troop/villain/world,其餘回退 free)。
-- [ ] **Android ☰ 觸控入口**:F8 觸控不可達 → 右上 ☰ 系統選單(`Keymap.System`);順修 worldmap
-      觸控字母列出界(拼圖 p 按鈕觸控不可達)。
-- [ ] 切換 toast 提示 +（選用）主題設定持久化。
+- [ ] 切換 toast 提示 +（選用）主題設定持久化;worldmap 拼圖 p 觸控出界(次要)。
+
+## 作弊選單(F12 / 觸控「作弊」)—— ✅ 完成(2026-07-10)
+
+移植 C `debug_cheat_menu`(game.c:5052,F12)到 Go/Ebiten,Android 觸控可用。
+- `internal/screen/cheat.go`:CheatMenuScreen,7 項作弊(+5000 金幣/+100 領導/學全法術/學魔法/
+  神級隊伍/解鎖下洲+寶珠+飛行/立即勝利),直接改寫 GameState;'w'→WinScreen。LetterRects 觸控熱區。
+- `input`:ActCheat + SymF12(keyboard/app 映 F12);`touch.go` 右上「作弊」鈕;worldmap 接 ActCheat。
+- `cjk24.bin` 重烤(Noto Sans CJK,收全 Go 字串)1226→1305 字,補缺字(弊/母/鎖/伍)。
+- 桌面 Xvfb 截圖驗證選單渲染、字全、版面不溢出。`-startcheat` debug flag。
+
+## 📋 待辦工作項
+
+- [ ] **Android 推廣影片**(使用者 2026-07-11 要求):用**最終修改完的版本**錄製 Android 版推廣片,
+      涵蓋 DOS 預設美術、主題切換(主題鈕 DOS→Amiga→free)、戰鬥施法、拼圖、作弊選單等亮點。
+      參考 C 版 `openkb-code/scripts/make-promo.sh`;錄製流程見 skill `retro-game-playtest`
+      (swipe-hold 觸控、adb screenrecord)。**待所有功能定版後再拍。**
+- [ ] Genesis 主題抽取(md-rom.c 管線;C 版本身僅 troop/villain/world 完成)。
