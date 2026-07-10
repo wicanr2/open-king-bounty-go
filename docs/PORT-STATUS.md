@@ -45,7 +45,8 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 - [x] **run_combat 戰後結算**(game.c:3598)——已完成(2026-07-10):存活寫回、foe 清 tile、
       圍攻奪城 + 履約、戰敗 temp_death,見下方「combat 戰後 hook」小節。⚠ 圍攻城牆障礙佈局未做。
 - [x] **navigate_continent** 航行換洲(1972)——已完成(2026-07-10,見 boat 小節)
-- [ ] **dismiss_army / dismiss_troop** 解散部隊(2027/play.c)
+- [x] **dismiss_army / dismiss_troop** 解散部隊(2027/play.c)——已完成(2026-07-10):
+      世界地圖 'd',列部隊選解散;最後一支需確認 → temp_death。
 - [ ] **choose_spell** 戰鬥施法(4275)— combat 已有結構,缺施法 caller(見 go issue #1)
 - [ ] **end_week** 週結算完整化(目前部分)
 - [ ] 寶箱 search_area(踩寶箱)

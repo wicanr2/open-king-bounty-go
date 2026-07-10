@@ -94,6 +94,8 @@ type GameState struct {
 	// FoeNumbers[cont][id][0..4] = 對應數量,對應 C game->foe_numbers。
 	FoeNumbers [kbdata.MaxContinents][kbdata.MaxFoes][5]int
 
+	// OrbFound[cont] = 是否已在該洲取得魔法寶珠(揭示小地圖),對應 C game->orb_found。
+	OrbFound [kbdata.MaxContinents]byte
 	// OrbCoords[cont] = [x,y](尋物法球位置),對應 C game->orb_coords[MAX_CONTINENTS][2]。
 	// 目前只記座標,尚未接 view_minimap/orb 撿拾流程(見 docs/PORT-STATUS.md B/C 段)。
 	OrbCoords [kbdata.MaxContinents][2]int

@@ -13,6 +13,7 @@ import (
 	"github.com/wicanr2/open-king-bounty-go/internal/gamestate"
 	"github.com/wicanr2/open-king-bounty-go/internal/input"
 	"github.com/wicanr2/open-king-bounty-go/internal/kbdata"
+	"github.com/wicanr2/open-king-bounty-go/internal/kbrng"
 	"github.com/wicanr2/open-king-bounty-go/internal/render"
 	"github.com/wicanr2/open-king-bounty-go/internal/save"
 )
@@ -260,6 +261,13 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		foe := foeSquadsFrom(s.gs.FoeTroops[cont][foeID], s.gs.FoeNumbers[cont][foeID])
 		// 戰後回寫:存活敵軍寫回 FoeTroops/Numbers,戰勝清 (nx,ny) tile(對齊 C run_combat mode 0)。
 		return Push(NewCombatScreenFoe(s.gs, s.assets, foe, cont, foeID, nx, ny))
+	}
+	// 踩到寶箱 → 開箱(對齊 C take_chest,game.c:3167):判定海圖/寶珠/寶藏並套用,
+	// 疊上 ChestScreen 顯示結果(金幣類讓玩家選 A/B)。TakeChest 內已清掉寶箱 tile。
+	if tile == kbdata.TileChest {
+		rng := kbrng.NewGlibc(uint32(cont*1000 + nx*kbdata.LevelH + ny + 1))
+		result := s.gs.TakeChest(s.assets, rng)
+		return Push(NewChestScreen(s.gs, s.assets, result))
 	}
 	// 踩到棲地 → 招兵(疊上 RecruitScreen,離開後回地圖)。rtype 對齊 C
 	// game.c:6915 visit_dwelling(game, m - TILE_DWELLING_1):TileDwelling1..4 依序
