@@ -315,9 +315,10 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
       確認 Amiga tileset/sprite 正確渲染、free 缺件回退正常。目前 dos/genesis 未抽 → 預設暫落 amiga。
 
 ### ⬜ 剩餘
-- [ ] **DOS 主題(讓 DOS 當預設)**:用 C `kbview`(src/tools/kbview.c,SDL_SavePNG)dump
-      `dos-orig/256.CC` 資源 → `data/dos/*.png`(free 版面)。tileset 先、再 sprite/UI。抽好即為預設。
-- [ ] **Genesis 主題**:同法 dump `data/genesis/`(C 版 MD_Resolve 僅 troop/villain/world,其餘回退 free)。
+- [x] **DOS 主題(DOS 當預設)**——✅ 完成(2026-07-10):`scripts/extract-dos-theme.sh`
+      (kbcc 拆 256.CC → free 命名 .256;MCGA.DRV@0x032D VGA 調色盤;kbview 轉 PNG)→ `data/dos/`(61 張)。
+      桌面 Xvfb 實測世界地圖 + 戰鬥 DOS 美術正確、sprite 去背正確、DOS 為預設。
+- [ ] **Genesis 主題**:`kb.bin` ROM 走 `md-rom.c`(不同管線,且 C 版僅 troop/villain/world,其餘回退 free)。
 - [ ] **Android ☰ 觸控入口**:F8 觸控不可達 → 右上 ☰ 系統選單(`Keymap.System`);順修 worldmap
       觸控字母列出界(拼圖 p 按鈕觸控不可達)。
 - [ ] 切換 toast 提示 +（選用）主題設定持久化。

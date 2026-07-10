@@ -75,12 +75,16 @@ C 版 openkb(`openkb-code/`)四主題(free/DOS/Genesis/Amiga)**執行期直接�
 | 主題 | 原始資源 | C 解碼器 | 已 dump 產物 | Go 用個別 PNG |
 |---|---|---|---|---|
 | **Amiga** | `amiga-orig/`(unpack GAME 散檔) | `src/lib/amiga-data.c` | ✅ `qa-amiga/all/*.png`(62 張,`tools/amiga_batch.py`+`amiga_decode.py`) | ✅ **已接上**(copy 進 `data/amiga/`) |
-| **DOS** | `dos-orig/kings-bounty/256.CC`+`416.CC`+`KB.EXE`(雜湊資源容器) | `DOS_Resolve`(free-data/kbres.c) | 部分:`qa-spr/{troop,villain,portrait}_dos.bmp`、`qa-themes/tiles_dos.bmp`/`iso_dos.bmp`(長條合成,非個別) | ⬜ 待 dump |
+| **DOS** | `dos-orig/kings-bounty/256.CC`(雜湊資源容器,名=free 名+`.256`) | kbcc 拆 + kbview 轉 | — | ✅ **已抽並成預設**(`scripts/extract-dos-theme.sh`,61 張) |
 | **Genesis** | `genesis-orig/kb.bin`(Sega ROM) | `src/lib/md-rom.c`(MD_Resolve;**僅 troop/villain/world 完成**,tile/UI/cursor/select/title 仍回退 free) | `qa-md/`、`qa-spr/md_*` | ⬜ 待 dump(且本身不完整) |
 
-**關鍵**:DOS/Genesis 在 C 已能解碼(長條 bmp 為證),**不必從零逆向**。產個別 PNG 的兩條路:
-1. **C `kbview` 逐資源 dump**(`src/tools/kbview.c` 有 `SDL_SavePNG`):建好 kbview,對 DOS 模組每個 free 同名資源 dump 成 PNG(free 版面),放 `internal/embedded/data/dos/`。這是最忠實、最省的「沿用」。
-2. **切既有長條 bmp**:`tiles_dos.bmp`→tileseta/b、`troop_dos.bmp`→各兵種——但長條未涵蓋全部 63 asset(UI/背景/title 等缺),仍需路 1 補齊。
+**DOS 抽取(已完成,見 `scripts/extract-dos-theme.sh`)**:`256.CC` 容器內資源名 = **free 名 + `.256`**
+(kbcc.c 內建名單證實),故 `kbcc -x 256.CC` 直接拆出 free 命名的 `.256`;VGA 調色盤在 `MCGA.DRV`
+偏移 `0x032D`(256 色 6-bit ×255/63,見 dos-data.c `DOS_ReadPalette_RW`)→ 做成 palette.png;
+`kbview x.256 -p palette.png -o x.png` 轉 PNG(尺寸/frame 佈局與 free 完全對上;灰底 colorkey 保留,
+Go `colorKeyTopLeft` 自動去背)。61 張,`select.png`→`select-0.png`。實測世界地圖 + 戰鬥 DOS 美術正確。
+
+**Genesis**(待):不同管線——`kb.bin` ROM,C `md-rom.c` 解碼(且本身僅 troop/villain/world 完成)。
 
 - 漸進上線:§3.0 free 底層回退 → DOS 只要抽好 tileset+主要 sprite 就能先切換看到,缺件自動用 free。
 - build 整合:build 前 `data/<theme>` 存在就 embed(`//go:embed all:data`);不存在則 ThemeManager 依 tileseta.png 偵測後自動缺席。
