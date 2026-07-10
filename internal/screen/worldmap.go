@@ -157,6 +157,13 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 			// 檢視角色(對齊 C combat_options_menu / 世界地圖選單「檢視角色」項):
 			// 疊上 ViewCharacterScreen,ESC 離開後回地圖(Push,非 Replace)。
 			return Push(NewViewCharacterScreen(s.gs, s.assets))
+		case 'n':
+			// 換洲航行(對齊 C KEY_ACT(NEW_CONTINENT),game.c:6768):只有乘船
+			// (Mount==SAIL)時可用,疊上換洲選單。
+			if s.gs != nil && s.gs.Mount == gamestate.KBMountSail {
+				return Push(NewNavigateContinentScreen(s.gs, s.assets))
+			}
+			return Stay()
 		}
 	}
 
@@ -409,14 +416,19 @@ func drawCoins(dst *ebiten.Image, x, y, gold int) {
 }
 
 func (s *WorldMapScreen) Keymap() input.Keymap {
+	letters := []input.LetterItem{
+		{Rune: 's', Label: "存檔"},
+		{Rune: 'l', Label: "讀檔"},
+		{Rune: 'v', Label: "軍隊"},
+		{Rune: 'c', Label: "角色"},
+	}
+	// 乘船時多一顆「換洲」(對齊 C:navigate_continent 僅 mount==SAIL 可用)。
+	if s.gs != nil && s.gs.Mount == gamestate.KBMountSail {
+		letters = append(letters, input.LetterItem{Rune: 'n', Label: "換洲"})
+	}
 	return input.Keymap{
 		Directions: true,
 		Cancel:     "標題",
-		Letters: []input.LetterItem{
-			{Rune: 's', Label: "存檔"},
-			{Rune: 'l', Label: "讀檔"},
-			{Rune: 'v', Label: "軍隊"},
-			{Rune: 'c', Label: "角色"},
-		},
+		Letters:    letters,
 	}
 }

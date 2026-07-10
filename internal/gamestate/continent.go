@@ -40,3 +40,39 @@ func ContinentNames(a *kbdata.Assets) [kbdata.MaxContinents]string {
 	}
 	return names
 }
+
+// ContinentEntry 回傳各洲的「航行入口座標」,來源 land.ini [continentN] 的 nav_x/nav_y
+// (對齊 C continent_entry[MAX_CONTINENTS][2],由 refill_rules 用 DAT_NAVX/Y 覆寫,
+// game.c:325)。sail_to 換洲時把玩家(與船)放到目的洲的這個座標。
+func ContinentEntry(a *kbdata.Assets) [kbdata.MaxContinents][2]int {
+	var entry [kbdata.MaxContinents][2]int
+	if a == nil {
+		return entry
+	}
+	ini := a.Strings["land"]
+	if ini == nil {
+		return entry
+	}
+	for i := 0; i < kbdata.MaxContinents; i++ {
+		sec, ok := ini.NumberedSection("continent", i)
+		if !ok {
+			continue
+		}
+		entry[i][0] = sec.IntDefault("nav_x", 0)
+		entry[i][1] = sec.IntDefault("nav_y", 0)
+	}
+	return entry
+}
+
+// SailTo 把玩家航行到目的洲,對齊 C sail_to(play.c:821):切換所在洲、移到該洲入口
+// 座標(ContinentEntry),船隻也停在入口(保持乘船狀態)。
+func (gs *GameState) SailTo(a *kbdata.Assets, continent int) {
+	if continent < 0 || continent >= kbdata.MaxContinents {
+		return
+	}
+	entry := ContinentEntry(a)
+	gs.Continent = continent
+	gs.X, gs.Y = entry[continent][0], entry[continent][1]
+	gs.Boat = byte(continent)
+	gs.BoatX, gs.BoatY = gs.X, gs.Y
+}
