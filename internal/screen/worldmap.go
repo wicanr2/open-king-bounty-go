@@ -239,6 +239,9 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 				townID = id
 			}
 		}
+		if townID >= 0 && townID < len(s.gs.TownVisited) {
+			s.gs.TownVisited[townID] = 1 // 對齊 C game->town_visited[id]=1(visit_town 開頭)
+		}
 		return Push(NewTownScreen(s.gs, s.assets, townID))
 	}
 	// 踩到城堡 → 依 CastleAt 判定 home/your/enemy 分派(對齊 C visit_castle,

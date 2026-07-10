@@ -124,6 +124,10 @@ type GameState struct {
 	// 清單只列已造訪城堡。
 	CastleVisited [kbdata.MaxCastles]byte
 
+	// TownVisited[id] = 玩家是否曾造訪過該鄉鎮(進城時設 1),對應 C game->town_visited。
+	// SPELL_TOWNGATE 傳送目的清單只列已造訪的鎮。
+	TownVisited [maxTowns]byte
+
 	// VillainCaught[id] = 玩家是否已捕獲該惡棍(打贏其懸賞戰後設 1),對應 C
 	// game->villain_caught[MAX_VILLAINS](bounty.h:119)。audience_with_king 用來算
 	// 「還需捕獲幾名才能晉升」;晉升條件 classes[class][rank+1].villains_needed。

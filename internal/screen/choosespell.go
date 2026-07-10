@@ -56,8 +56,20 @@ func (s *ChooseSpellScreen) Update(a input.Action) Transition {
 }
 
 // cast 施放右欄第 idx 個冒險法術(spell id = spellHalf + idx),顯示結果。
+// 傳送法術(castlegate/towngate)先消耗法術再 Replace 進目的地選單(對齊 C:choose_spell
+// 呼叫 select_gate 後仍 `spells[spell_id]--`,即使取消目的地也消耗)。
 func (s *ChooseSpellScreen) cast(idx int) Transition {
 	spellID := spellHalf + idx
+	if s.gs.Spells[spellID] > 0 {
+		switch gamestate.SpellAction(spellID) {
+		case gamestate.SpellCastleGate:
+			s.gs.Spells[spellID]--
+			return Replace(NewSelectGateScreen(s.gs, s.assets, gateCastle))
+		case gamestate.SpellTownGate:
+			s.gs.Spells[spellID]--
+			return Replace(NewSelectGateScreen(s.gs, s.assets, gateTown))
+		}
+	}
 	r := s.gs.CastAdventureSpell(s.assets, spellID)
 	s.mode = chooseSpellResult
 	switch r.Kind {
