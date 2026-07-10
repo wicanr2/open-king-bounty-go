@@ -65,6 +65,33 @@ worldmap 的 foe/dwelling)。要讓它們變真實,需把 C spawn_game/salt_cont
 - [ ] **artifact / scepter**(拼圖、尋寶、破關條件)
 - [ ] **sidebar 動態內容**(contract 頭像、拼圖 piece 疊圖 — 需 B/世界狀態)
 
+### ★世界生成架構計畫(調查後,2026-07-10)
+
+**關鍵發現**:Go 的 raw land.org 是 **salt 前**的地圖(land_test.go 證實:178 個 chest 0x8B
++ 92 個 foe 0x91,**無 dwelling tile**)。C 的 dwelling/artifact/orb/telecave 都是
+`salt_continent`(play.c:183)在建遊戲時**把 chest tile 轉成**的。**Go 尚未移植 salt_continent**
+→ 所以正常遊玩中 dwelling 根本不出現(recruit 只能靠 -startrecruit debug flag 到)、
+foe 也用 placeholderFoe。
+
+**移植架構**(下一步邏輯移植照此做):
+1. **gamestate 持有 per-game 可變地圖** `gs.Map`(NewGame 時 copy assets.World → gs.Map),
+   因為 salt 會 mutate 地圖(chest→dwelling)。worldmap.go 改讀 `gs.Map` 而非 assets.World(共享唯讀)。
+2. **NewGame 跑 salt_continent**(移植 play.c:183-330 的 chest 掃描 + 放置):
+   salt_continent(game, cont, 2 artifact,1 navmap,1 orb,2 telecave,10 dwelling,5 friendly)。
+   放置時用 kbdata 的世界生成表(dwelling_ranges/continent_dwellings/dwelling_to_troop 等,
+   go-worldgen-tables 正在移植)+ populate_dwelling(play.c:50)+ repopulate_foe/roll_creature(play.c:28/89)。
+3. **gamestate 加地圖級陣列**:DwellingCoords/Troop/Population、FoeCoords/Troops/Numbers
+   (per continent),NewGame 填好。
+4. **存讀檔**:salt 是 deterministic(給定 seed+map)→ 存檔存 world seed,load 時**用該 seed 重跑 salt**
+   還原世界,避免擴充存檔格式(同 roguelike 存 seed 的做法)。
+5. **接線**:recruit 讀 gs.DwellingTroop/Population(取代 demo 佔位);worldmap combat 讀
+   gs.FoeTroops/Numbers(取代 placeholderFoe)。
+6. **RNG parity**:同 salt_spells——NewGame 未逐一重現 spawn_game 完整 rand 序列,故非逐 seed
+   對齊 C,但演算法忠實(放置規則/roll 範圍/型別一致)。誠實標註。
+
+> 這塊 correctness 敏感(RNG + 地圖 mutation + 存檔),分兩步:①資料表(go-worldgen-tables,進行中)
+> ②生成邏輯 + 每局地圖 + 接線(下一個專項,旗艦嚴審)。
+
 ## 建議優先序
 
 1. **檢視畫面 A(view_army、view_character 已完成)** — 自足、只讀既有 gamestate、玩家常用,先做累積可見進度。剩 view_contract/view_puzzle/view_minimap 皆需世界狀態,待 2 完成後再回頭。
