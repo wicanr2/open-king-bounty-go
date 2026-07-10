@@ -68,6 +68,14 @@ func (s *ChooseSpellScreen) cast(idx int) Transition {
 		case gamestate.SpellTownGate:
 			s.gs.Spells[spellID]--
 			return Replace(NewSelectGateScreen(s.gs, s.assets, gateTown))
+		case gamestate.SpellBridge:
+			s.gs.Spells[spellID]--
+			return Replace(NewBridgeScreen(s.gs, s.assets))
+		case gamestate.SpellFindVillain:
+			// 對齊 C:find_villain(標記惡棍城堡已知)後開 view_contract。
+			s.gs.Spells[spellID]--
+			s.gs.FindVillain()
+			return Replace(NewViewContractScreen(s.gs, s.assets))
 		}
 	}
 	r := s.gs.CastAdventureSpell(s.assets, spellID)
