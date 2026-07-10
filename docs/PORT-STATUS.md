@@ -49,7 +49,8 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
       世界地圖 'd',列部隊選解散;最後一支需確認 → temp_death。
 - [ ] **choose_spell** 戰鬥施法(4275)— combat 已有結構,缺施法 caller(見 go issue #1)
 - [ ] **end_week** 週結算完整化(目前部分)
-- [ ] 寶箱 search_area(踩寶箱)
+- [x] 寶箱 take_chest(踩寶箱)——已完成(2026-07-10):海圖解鎖下一洲(補上 boat
+      的探索觸發)/寶珠 orb_found /寶藏(金幣·領導力二選一·收入·法力·法術上限·獲法術·空箱)。
 
 ### 玩家座標 / 存讀檔——已完成(2026-07-10)
 玩家 Continent/X/Y 已從 WorldMapScreen 移入 GameState,修正存讀檔遺失位置 +
@@ -242,8 +243,9 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
   靠岸下船(船留上一格水域);主角 sprite 幀用 Mount(SAIL=0 船 / RIDE=8 馬)。
 - **navigate_continent**:乘船時按 'n' → NavigateContinentScreen(列 ContinentFound
   的洲)→ SailTo(切洲 + 移入口 ContinentEntry)+ 消耗一週。
-- ⚠ 未做:神器 POWER_CHEAPER_BOAT_RENTAL 降租金(BoatCost 恆 CostBoatExpensive)、
-  「哪些洲可航抵」的連通性/探索觸發(ContinentFound 目前只有家鄉洲 + 手動設定)。
+- ⚠ 未做:神器 POWER_CHEAPER_BOAT_RENTAL 降租金(BoatCost 恆 CostBoatExpensive)。
+  **探索觸發已補**:寶箱的導航海圖(take_chest ChestNavmap)會 ContinentFound[c+1]=1,
+  這是正常遊戲取得可航洲的機制(見「寶箱 take_chest」)。
 
 ## 建議優先序
 
