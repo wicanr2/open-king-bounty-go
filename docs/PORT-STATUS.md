@@ -68,9 +68,9 @@ gamestate.FulfillContract/TempDeath、combat.AcceptUnitsPlayer/AcceptSquads、
 kbdata.WorldMap.Set。⚠ 圍攻城牆障礙佈局(combat mode=1 的 castle_umap)未做。
 
 ### D. 開場 / 雜項
-- [ ] **display_logo** NWC logo(924)
-- [ ] **show_credits** 製作名單(706)
-- [ ] **display_cartoon** 開場動畫 / 地球(4513;free 版可能空白/低優先)
+- [x] **display_logo** NWC logo(924)——已完成(2026-07-10):LogoScreen(nwcp.png)→ 標題。
+- [x] **show_credits** 製作名單(706)——已完成(2026-07-10):標題按 'c' → CreditsScreen(credits.txt)。
+- [ ] **display_cartoon** 開場動畫 / 地球(4513)——free 模組無專屬 cartoon 動畫幀(僅 nwcp.png 商標,已用於 logo);低優先,可視為 N/A。
 
 ## ⬜ 世界狀態(foundational — 解鎖上面多個畫面的真實動作邏輯)
 
@@ -269,12 +269,20 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
   即時能力 + HasPower + BoatCostWith)、權杖埋藏(PlaceScepter)+ 搜索破關(SearchScreen 'g' +
   WinScreen)。**遊戲可從新遊戲玩到通關。** ⚠ 剩 view_puzzle 拼圖、戰鬥中神器 Powers(增傷/減傷)、
   結局動畫/圖(版權素材)。
-- **view_puzzle**(拼圖:以 ArtifactFound/VillainCaught 逐步揭示權杖位置,5×5;ArtifactFound 已建模)、
-  **view_minimap**(orb 已建模 OrbFound,缺小地圖繪製)、**visit_alcove**(魔法密室)。
-- **end_week 完整化**(目前 EndWeek 是玩家面近似,缺巢穴/城堡/foe 增兵、精確 week_id)。
-- **開場**:display_logo(NWC)、show_credits(credits.txt 已在 free)、display_cartoon(free 版可能空)。
-- **戰鬥中神器 Powers**(INCREASED_DAMAGE/QUARTER_PROTECTION;combat.Powers 目前恆 0,可從 ArtifactFound 接)。
-- **sidebar 拼圖 piece 疊圖**(需 artifact/villain 世界狀態,ArtifactFound 已建模)。
+- [x] **view_puzzle / view_minimap / visit_alcove** — ✅ 已完成(2026-07-10)。
+- [x] **end_week 完整化** — ✅ 已完成(2026-07-10):停時歸零 + 巢穴/foe/城堡每週成長 + 空城堡補守軍。⚠ 剩精確 week_id(用 Week 計數近似)、opt_* 選項旗標。
+- [x] **開場 display_logo / show_credits** — ✅ 已完成(2026-07-10)。display_cartoon = free 無素材(N/A)。
+- [x] **戰鬥中神器 Powers** — ✅ 已完成(2026-07-10):PrepareUnitsPlayer 從 ArtifactFound 填 combat.Powers。
+
+### 移植大致完成(2026-07-10)——剩餘只餘打磨
+核心 + 進階系統(城鎮/城堡/棲地/戰鬥含施法奪城/寶箱/boat/傳送/路標/解散/換洲/
+神器/破關/魔法密室/小地圖/拼圖/週結算/開場)全數移植,遊戲可從新遊戲玩到通關。
+**剩餘皆屬打磨,非阻塞**:
+- sidebar 拼圖 piece 疊圖(素材疊圖;ArtifactFound 已建模)、view_puzzle 未掀開格的
+  惡棍臉/神器圖示(目前灰底)、minimap orb 迷霧(目前顯示整洲)。
+- 精確 week_id / opt_* gameplay 旗標、read_signpost 以外的細節音效/動畫。
+- RNG 逐 seed parity(演算法忠實,但未從第一個 rand() 起對齊 C,見 NewGame 註記)。
+- Android 模擬器整合驗收新系統(桌面 ffmpeg 已驗關鍵畫面)。
 
 > 每項:以 C 源為規格 → 桌面 debug flag 截圖對齊 → gamestate 邏輯旗艦自己做、
 > 解碼/render/佈局派便宜 subagent → docker build/test 綠 + 截圖驗收才 commit。
