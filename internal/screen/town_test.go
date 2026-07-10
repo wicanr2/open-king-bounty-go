@@ -72,7 +72,9 @@ func TestTownScreen_LetterC_SwitchesToInfo(t *testing.T) {
 		t.Errorf("按 'c' 後 sel = %d, want 2", s.sel)
 	}
 
-	for i, r := range []rune{'a', 'b', 'e'} {
+	// B(租船)/E(攻城)仍是佔位 stub(需 boat/siege 世界狀態);A 已接契約、
+	// C 情報、D 學法術,不在此 stub 迴圈。
+	for i, r := range []rune{'b', 'e'} {
 		s2 := newTestTownScreen(t)
 		s2.Update(input.Letter(r))
 		if s2.mode != townModeStub {
@@ -81,6 +83,20 @@ func TestTownScreen_LetterC_SwitchesToInfo(t *testing.T) {
 		if s2.stub != townLetters[indexOfRune(r)].Label {
 			t.Errorf("按 %q 後 stub = %q, want %q", r, s2.stub, townLetters[indexOfRune(r)].Label)
 		}
+	}
+}
+
+// TestTownScreen_LetterA_TakesContract 驗證 A(領取新契約)接 next_contract:
+// 起手 ContractCycle={0,1,2,3,4}/LastContract=4 → 領到 villain 0,設定
+// gs.Contract/LastContract 並 Push view_contract(對齊 C visit_town key==1)。
+func TestTownScreen_LetterA_TakesContract(t *testing.T) {
+	s := newTestTownScreen(t)
+	tr := s.Update(input.Letter('a'))
+	if s.gs.Contract != 0 || s.gs.LastContract != 0 {
+		t.Errorf("領契約後 Contract=%d LastContract=%d, want 0/0", s.gs.Contract, s.gs.LastContract)
+	}
+	if tr.Kind != KindPush {
+		t.Errorf("領契約應 Push view_contract,got transition kind %v", tr.Kind)
 	}
 }
 

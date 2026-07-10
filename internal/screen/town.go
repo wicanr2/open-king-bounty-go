@@ -99,10 +99,10 @@ func (s *TownScreen) Update(a input.Action) Transition {
 			s.sel++
 		}
 	case input.ActConfirm:
-		s.activate(s.sel)
+		return s.activate(s.sel)
 	case input.ActLetter:
 		if a.Rune >= 'a' && a.Rune <= 'e' {
-			s.activate(int(a.Rune - 'a'))
+			return s.activate(int(a.Rune - 'a'))
 		}
 	case input.ActCancel:
 		return Pop()
@@ -111,14 +111,17 @@ func (s *TownScreen) Update(a input.Action) Transition {
 }
 
 // activate 觸發第 idx 個選單項(0=A..4=E),對應 C 版 key==1..5 分支。
-// C(情報,idx==2)切到情報顯示;D(學法術,idx==3)呼叫 learnSpell;其餘項
-// (A/B/E)先切到「未實作」提示(需世界狀態:contract/boat/siege)。
-func (s *TownScreen) activate(idx int) {
+// A(領取新契約,idx==0)接 next_contract;C(情報,idx==2)切到情報顯示;
+// D(學法術,idx==3)呼叫 learnSpell;其餘項(B 租船/E 攻城)先切到「未實作」
+// 提示(需世界狀態:boat/siege)。
+func (s *TownScreen) activate(idx int) Transition {
 	if idx < 0 || idx >= len(townLetters) {
-		return
+		return Stay()
 	}
 	s.sel = idx
 	switch townLetters[idx].Rune {
+	case 'a':
+		return s.takeContract()
 	case 'c':
 		s.mode = townModeInfo
 	case 'd':
@@ -127,6 +130,27 @@ func (s *TownScreen) activate(idx int) {
 		s.mode = townModeStub
 		s.stub = townLetters[idx].Label
 	}
+	return Stay()
+}
+
+// takeContract 對齊 C visit_town key==1(game.c:2753-2772):領取下一個懸賞契約。
+// next_contract 回 0xFF(已無惡棍)→ 顯示提示;否則設 last_contract/contract
+// 後疊出 view_contract 顯示新目標(sidebar 契約臉也會跟著更新)。
+func (s *TownScreen) takeContract() Transition {
+	if s.gs == nil {
+		s.mode = townModeStub
+		s.stub = townLetters[0].Label
+		return Stay()
+	}
+	villainID := s.gs.NextContract()
+	if villainID == 0xFF {
+		s.mode = townModeLearnResult
+		s.learnMsg = []string{"這片土地已無惡棍作亂……"}
+		return Stay()
+	}
+	s.gs.LastContract = villainID
+	s.gs.Contract = villainID
+	return Push(NewViewContractScreen(s.gs, s.assets))
 }
 
 // learnSpell 對齊 C visit_town() key==4 分支(game.c:2807-2827):呼叫
