@@ -110,10 +110,28 @@ type Assets struct {
 	StartArmyTroop [4][2]int // 各職業起手兩格兵種 id(0xFF = 空)
 	StartArmyCount [4][2]int // 對應數量
 	// TODO(P2+): Tiles(tileset 美術)由 render 層填入。
+
+	// VillainDescs[id] 是 view_contract 用的懸賞契約多行描述文字,對應 C 版
+	// STRL_VDESCS(free-data.c:1132 `KB_strcpy(tmp, DOS_villain_names[sub_id]);
+	// KB_strcat(tmp, ".txt"); GNU_read_textfile(mod, tmp, 0)`):讀
+	// data/free/<villains.ini villainN.file>.txt 整檔原文(含真實 \n、含兩個
+	// %s 佔位:第一個是最後現身大陸洲名、第二個是城堡名,呼叫端 fmt.Sprintf 代入)。
+	// 缺檔該筆維持空字串,呼叫端須 nil/空字串安全。
+	VillainDescs [MaxVillains]string
 }
 
 // freeIniNames 是 Load 會嘗試載入的 free 資料清單(缺檔不致命)。
-var freeIniNames = []string{"troops", "spells", "towns", "villains", "artifacts", "ui", "colors", "castles"}
+//
+// "land" 收錄 land.ini(洲名/國王居所/魔法密室座標),與 land.org(世界地圖 tile
+// grid 本體,見 land.go)是不同檔案、不同用途 —— 這裡只解「中繼資料」的 ini 格式,
+// 不影響地圖 tile。加入這份清單是 view_contract 移植時發現的缺口:C 版
+// refill_names()(game.c:221)在每次開新遊戲後,把 bounty.c 硬編的
+// continent_names[]("大陸洲"/"森林洲"/"群島洲"/"撒哈洲")整個覆寫成
+// STRL_CONTINENTS 讀到的 land.ini continent0-3 name 欄位("弗蘭德利亞"/"第二洲"/
+// "第三洲"/"第四洲")——bounty.c 那組字面值在 free 模組實際執行時從未真正顯示過,
+// 是死預設值(核對見 gamestate/continent.go 檔頭注記),故本移植不採用 bounty.c
+// 硬編陣列,改讀 land.ini,對齊 refill_names() 實際覆寫後的結果。
+var freeIniNames = []string{"troops", "spells", "towns", "villains", "artifacts", "ui", "colors", "castles", "land"}
 
 // Load 讀取 dir 下的遊戲資料並回傳 *Assets。dir=="" 只回靜態表(供純邏輯測試)。
 func Load(dir string) (*Assets, error) {
@@ -152,5 +170,30 @@ func LoadFS(fsys fs.FS) (*Assets, error) {
 			a.World = wm
 		}
 	}
+	loadVillainDescs(fsys, a)
 	return a, nil
+}
+
+// loadVillainDescs 讀 17 個惡棍的 STRL_VDESCS 描述文字檔(見 Assets.VillainDescs
+// 欄位註解)。檔名取自 villains.ini 各 villainN 區塊的 file 欄位(對齊 C 版
+// DOS_villain_names[sub_id],兩者索引順序逐一核對一致,見
+// gamestate/villain.go 檔頭注記),不是另建一份寫死清單。
+func loadVillainDescs(fsys fs.FS, a *Assets) {
+	ini := a.Strings["villains"]
+	if ini == nil {
+		return
+	}
+	for i := 0; i < MaxVillains; i++ {
+		sec, ok := ini.NumberedSection("villain", i)
+		if !ok {
+			continue
+		}
+		file := sec.GetDefault("file", "")
+		if file == "" {
+			continue
+		}
+		if b, err := fs.ReadFile(fsys, "free/"+file+".txt"); err == nil {
+			a.VillainDescs[i] = string(b)
+		}
+	}
 }

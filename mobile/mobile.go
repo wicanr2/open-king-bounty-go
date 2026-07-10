@@ -106,6 +106,15 @@ func init() {
 		} else {
 			log.Printf("load view items: %v", err)
 		}
+		// 惡棍臉部(view_contract 用),同桌面版 main.go 的載入方式。
+		for id, name := range screen.VillainFileNames {
+			sp, err := render.LoadSpriteOpaqueFS(embedded.FS(), "free/"+name+".png", 48, 34)
+			if err != nil {
+				log.Printf("load villain face %s: %v", name, err)
+				continue
+			}
+			screen.SetVillainFace(id, sp)
+		}
 	}
 
 	// SetGame 讓 ebitenmobile 生成的 Java/Kotlin 綁定驅動這顆遊戲迴圈。

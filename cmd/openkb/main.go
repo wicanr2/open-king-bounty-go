@@ -17,18 +17,20 @@ import (
 const defaultDataDir = "/home/anr2/openkb/openkb-code/data"
 
 var (
-	datadir       = flag.String("datadir", defaultDataDir, "遊戲資料目錄(cjk24.bin / free/*.ini / free/*.png)")
-	startClass    = flag.Int("startclass", -1, "debug:>=0 直接以該職業建角進世界地圖(截圖驗證用)")
-	startCombat   = flag.Bool("startcombat", false, "debug:直接切入一場戰鬥(截圖驗證用)")
-	startSelect   = flag.Bool("startselect", false, "debug:直接進選角畫面(截圖驗證用)")
-	startTown     = flag.Bool("starttown", false, "debug:直接進城鎮畫面(截圖驗證用)")
-	townID        = flag.Int("townid", 0, "debug:配合 -starttown,指定要進哪個鎮(0-25,對應 gamestate.Town.ID)")
-	startRecruit  = flag.Bool("startrecruit", false, "debug:直接進招兵(棲地)畫面(截圖驗證用)")
-	startViewArmy = flag.Bool("startviewarmy", false, "debug:直接進軍隊檢視畫面(截圖驗證用)")
-	startViewChar = flag.Bool("startviewchar", false, "debug:直接進角色檢視畫面(截圖驗證用)")
-	recruitRtype  = flag.Int("rtype", 0, "debug:配合 -startrecruit,棲地類型(0=平原 1=森林 2=山丘 3=地下城)")
-	recruitTroop  = flag.Int("recruittroop", 0, "debug:配合 -startrecruit,招募兵種 TroopID")
-	worldSeed     = flag.Uint("seed", uint(gamestate.DefaultWorldSeed), "debug:配合 -starttown/-startclass,指定 salt_spells 等世界生成用的 RNG seed")
+	datadir           = flag.String("datadir", defaultDataDir, "遊戲資料目錄(cjk24.bin / free/*.ini / free/*.png)")
+	startClass        = flag.Int("startclass", -1, "debug:>=0 直接以該職業建角進世界地圖(截圖驗證用)")
+	startCombat       = flag.Bool("startcombat", false, "debug:直接切入一場戰鬥(截圖驗證用)")
+	startSelect       = flag.Bool("startselect", false, "debug:直接進選角畫面(截圖驗證用)")
+	startTown         = flag.Bool("starttown", false, "debug:直接進城鎮畫面(截圖驗證用)")
+	townID            = flag.Int("townid", 0, "debug:配合 -starttown,指定要進哪個鎮(0-25,對應 gamestate.Town.ID)")
+	startRecruit      = flag.Bool("startrecruit", false, "debug:直接進招兵(棲地)畫面(截圖驗證用)")
+	startViewArmy     = flag.Bool("startviewarmy", false, "debug:直接進軍隊檢視畫面(截圖驗證用)")
+	startViewChar     = flag.Bool("startviewchar", false, "debug:直接進角色檢視畫面(截圖驗證用)")
+	startViewContract = flag.Bool("startviewcontract", false, "debug:直接進懸賞契約檢視畫面(截圖驗證用)")
+	contractVillain   = flag.Int("contractvillain", -1, "debug:配合 -startviewcontract,>=0 直接把 gs.Contract 設為該惡棍 id(0-16;起手預設 0xFF=無契約)")
+	recruitRtype      = flag.Int("rtype", 0, "debug:配合 -startrecruit,棲地類型(0=平原 1=森林 2=山丘 3=地下城)")
+	recruitTroop      = flag.Int("recruittroop", 0, "debug:配合 -startrecruit,招募兵種 TroopID")
+	worldSeed         = flag.Uint("seed", uint(gamestate.DefaultWorldSeed), "debug:配合 -starttown/-startclass,指定 salt_spells 等世界生成用的 RNG seed")
 )
 
 func rootScreen(a *kbdata.Assets) screen.Screen {
@@ -60,6 +62,16 @@ func rootScreen(a *kbdata.Assets) screen.Screen {
 		}
 		gs := gamestate.NewGame(a, "Sir Loin", class, uint32(*worldSeed))
 		return screen.NewViewCharacterScreen(gs, a)
+	}
+	if *startViewContract {
+		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
+		// debug 直接進懸賞契約檢視:起手 gs.Contract 恆為 0xFF(尚未接契約,對齊
+		// spawn_game),-contractvillain 讓截圖驗證能固定看「有契約」畫面,不必真的
+		// 走完整套「城鎮領契約」流程(那是另一案,見 docs/PORT-STATUS.md)。
+		if *contractVillain >= 0 && *contractVillain < kbdata.MaxVillains {
+			gs.Contract = byte(*contractVillain)
+		}
+		return screen.NewViewContractScreen(gs, a)
 	}
 	if *startClass >= 0 && *startClass < 4 {
 		gs := gamestate.NewGame(a, "Sir Loin", *startClass, gamestate.DefaultWorldSeed)
@@ -157,6 +169,16 @@ func main() {
 		screen.SetViewItems(items)
 	} else {
 		log.Printf("load view items: %v", err)
+	}
+	// 惡棍臉部(view_contract 用):不去背(free-data.c case GR_VILLAIN 設
+	// is_transparent=0),同 sidebar.png 的載入方式。
+	for id, name := range screen.VillainFileNames {
+		sp, err := render.LoadSpriteOpaque(*datadir, name+".png", 48, 34)
+		if err != nil {
+			log.Printf("load villain face %s: %v", name, err)
+			continue
+		}
+		screen.SetVillainFace(id, sp)
 	}
 
 	ebiten.SetWindowSize(app.LogicalW*3, app.LogicalH*3)

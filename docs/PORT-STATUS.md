@@ -24,12 +24,12 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 | **軍隊檢視** | view_army | viewarmy.go(+ gamestate/morale.go:troop_morale/morale_chart/morale_names) |
 | **角色檢視** | view_character | viewcharacter.go(班底立繪 + 數值框 + 底部道具帶;player_captured/num_artifacts/castles/score/followers_killed 為世界狀態佔位 0,artifact_found 全空、continent_found 僅 home 洲) |
 | **世界生成(salt_continent)** | salt_continent/populate_dwelling/repopulate_foe/roll_creature(play.c:28-330) | gamestate/worldgen.go(NewGame 逐洲跑,填 gs.WorldMap + Dwelling*/Foe*/Orb/Navmap/Telecave 座標;worldmap.go/recruit.go 接線讀真實世界狀態,取代舊 placeholderFoe/demoRecruitTroopID 佔位) |
-| **世界生成(城堡/惡棍/契約起手值)** | salt_villains/repopulate_castle/num_castles(play.c:77-182)+ spawn_game 城堡/契約段(374-478) | gamestate/castlegen.go + castle.go(NewGame 在 saltContinent 四洲之後跑;CastleOwner/CastleTroops/CastleNumbers/Contract 系列欄位,見下方獨立小節;**尚未接畫面**——visit_castle/view_contract 等待後續) |
+| **世界生成(城堡/惡棍/契約起手值)** | salt_villains/repopulate_castle/num_castles(play.c:77-182)+ spawn_game 城堡/契約段(374-478) | gamestate/castlegen.go + castle.go(NewGame 在 saltContinent 四洲之後跑;CastleOwner/CastleTroops/CastleNumbers/Contract 系列欄位,見下方獨立小節;**visit_castle 仍待後續**) |
+| **懸賞契約檢視** | view_contract(game.c:1641-1735) | viewcontract.go(無契約:sidebar.png 幀8 空框 +「你目前沒有懸賞契約！」;有契約:GR_VILLAIN 臉部 4 幀動畫 + STRL_VDESCS 描述文字,%s %s 代入洲名/城堡名;見下方獨立小節的資料溯源紀錄) |
 
 ## ⬜ 剩餘畫面(以 C 源為規格逐一移植)
 
 ### A. 檢視畫面(主要是顯示既有 gamestate,自足、優先)
-- [ ] **view_contract** 懸賞契約(game.c:1641)— 目標 villain 頭像 + 資訊(需 contract 世界狀態)
 - [ ] **view_puzzle** 拼圖(game.c:1392)— 5×5 拼圖(需 artifact/villain 世界狀態)
 - [ ] **view_minimap** 小地圖/導航(game.c:1533)— 該洲縮圖(需 orb/navmap 狀態)
 
@@ -59,13 +59,13 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
 (見下方「世界生成」段);town 的契約/租船/情報仍是「佔位 stub」,要讓它們變真實,
 還需要把 C spawn_game 剩下的 contract/boat/castle/villain 世界生成移植進 gamestate.NewGame:
 
-- [x] **villain 位置 + contract 起手值**(salt_villains 已把惡棍塞進城堡;contract/last_contract/max_contract/contract_cycle 起手值已設,見下方獨立小節)——**view_contract 畫面/sidebar 頭像/接受契約動作仍未做**
+- [x] **villain 位置 + contract 起手值**(salt_villains 已把惡棍塞進城堡;contract/last_contract/max_contract/contract_cycle 起手值已設,見下方獨立小節)——**view_contract 畫面已完成(見上表);sidebar 頭像疊圖/接受契約動作仍未做**
 - [ ] **boat**(租船 + 航行 + 上下船)
 - [x] **castle** 世界狀態(castle_owner/troops/numbers、repopulate_castle、salt_villains,見下方獨立小節)——**visit_castle 等城堡畫面仍未做**
 - [x] **dwelling** 真實兵種 + 庫存(populate_dwelling/dwelling_population;recruit.go 已讀真實世界狀態)
 - [x] **foe** 真實部隊(foe_troops/foe_numbers;worldmap.go 已讀真實世界狀態,取代 placeholderFoe)
 - [ ] **artifact / scepter**(拼圖、尋寶、破關條件;座標已記錄於 map tile,尚未接 UI/撿拾邏輯)
-- [ ] **sidebar 動態內容**(contract 頭像、拼圖 piece 疊圖 — 需 B/世界狀態)
+- [ ] **sidebar 動態內容**(draw_sidebar 的 contract 頭像疊圖 —— chrome.go drawSidebar 幀 8 目前恆顯示空框註解已過期:Contract 系統與 GR_VILLAIN 素材現已齊備,可疊 gs.Contract 對應的臉部幀,是低成本的後續補完,非世界狀態缺口;拼圖 piece 疊圖仍需 artifact/villain 世界狀態)
 
 ### 世界生成(salt_continent)——已完成(2026-07-10)
 
@@ -140,10 +140,57 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
   repopulate 非空、契約起手值、存讀檔往返)。docker `golang:1.24-bookworm`
   build/vet/xvfb-run test 全綠(含既有 render/screen/combat 套件回歸)。
 
+### 懸賞契約檢視(view_contract)——已完成(2026-07-10)
+
+移植自 `view_contract()`(game.c:1641-1735),見 `internal/screen/viewcontract.go`
+(畫面)+ `internal/gamestate/villain.go`(Villain 靜態表 + `FindVillainCastle`)+
+`internal/gamestate/continent.go`(`ContinentNames`)+ `internal/kbdata/assets.go`
+(`Assets.VillainDescs`,STRL_VDESCS 描述文字載入)+ `internal/screen/villain_assets.go`
+(GR_VILLAIN 臉部 sprite)。逐句對照 C,關鍵資料溯源(rulebook 62):
+
+- **實際顯示的文字不是 villains.ini 的 name/reward,是 `<file>.txt`**:C 版
+  `KB_Resolve(STRL_VDESCS, villain_id)`(free-data.c:1132)讀
+  `DOS_villain_names[id]+".txt"`(如 `czar.txt`),檔案本身已包含「姓名/別號/懸賞/
+  最後現身/城堡/特徵/罪行」等全部文字,只留兩個 `%s` 佔位給洲名與城堡名。
+  `villains.ini` 的 name/reward 欄位在這個畫面完全不使用(留給未來 visit_castle
+  等其他畫面查詢用,故仍建了 `gamestate.LoadVillains`)。
+- **洲名不是 bounty.c 硬編值,是 land.ini(重大溯源發現)**:game.c:1699 讀的
+  `continent_names[]` 全域陣列,在**每次開新遊戲後**都被 `refill_names()`
+  (game.c:221,呼叫點 490/700/7116/7145)整個覆寫成 `STRL_CONTINENTS`
+  (= `land.ini` `continent0-3` 的 `name` 欄位)。也就是說 bounty.c 硬編的
+  「大陸洲/森林洲/群島洲/撒哈洲」在 free 模組正常遊戲流程中**從未被實際顯示過**,
+  是死預設值——實際顯示的是 land.ini 的「弗蘭德利亞/第二洲/第三洲/第四洲」
+  (這幾個名字本身像 land.tmx 匯出工具的佔位文字,但那是資料內容本身,不影響
+  「執行期讀哪個來源」的判斷)。`kbdata.freeIniNames` 因此新增 `"land"`,
+  `gamestate.ContinentNames` 讀 `a.Strings["land"]`。城堡名同理沿用既有決策
+  (`castle.go` 已讀 `castles.ini`,不用 bounty.c `castle_names[]` 硬編英文預設值——
+  該陣列同樣被 `refill_names()` 的 `castle_list`/`STRL_CASTLES` 覆寫,只是這條
+  溯源在城堡世界生成那次移植就已查清,此次只是再次確認結論一致)。
+- **前導空白是刻意版面設計,不是雜訊**:C 版文字與臉部圖(48×34,4 幀)共用同一個
+  blit 原點(`hdst` = `border.x+fs.w, border.y+fs.h`),CJK 又是「先畫美術層、
+  後疊字层」(雙層合成,見 render/cjktext.go),理論上文字前幾格會蓋在臉部圖上。
+  實測(`czar.txt`)每行前面固定 7 個全形空格(`城堡:` 那行更多,刻意再縮排對齊
+  `最後現身:` 下方),換算成本畫面的 CJKCell(8px)寬度,恰好把可讀文字推到臉部圖
+  (48px=6 cell)右緣之後,兩者不重疊——桌面截圖驗證视覺上確實乾淨對齊,證實這是
+  原始資料檔案的刻意留白,移植時原樣保留(不 trim),不是要修正的雜訊。
+- **C 版不呼叫 KB_TopBox/KB_BottomFrame**:逐讀 game.c:1641-1735 全函式確認,
+  與 view_army/view_character 不同,故本移植也不畫頂列提示文字。
+- **驗收**:docker `golang:1.24-bookworm`(+ X11 dev headers)build/vet/test 全綠
+  (含既有套件回歸)。桌面截圖(Xvfb + import,`-startviewcontract` /
+  `-contractvillain 13`)驗過兩態:①`Contract=0xFF`——藍底框 + sidebar.png 幀 8
+  空框 +「你目前沒有懸賞契約！」置中偏移正確;②`Contract=13`(沙皇鮑里斯三世/
+  czar)——臉部立繪(皇冠鬍鬚特徵清楚)+ 完整描述文字 13 行皆在框內、無溢出,
+  `find_villain_castle` 找到 castle8「艾昂」、洲別「第三洲」代入正確
+  (與 castles.ini castle8/land.ini continent2 逐一核對一致)。
+- **已知後續(非本次範圍,已在世界狀態清單標註)**:`chrome.go` 的
+  `drawSidebar` 幀 8(合約框)目前仍恆顯示空框——舊註解「暫無 contract 系統」
+  已過期(Contract 欄位與 GR_VILLAIN 素材現已齊備),補上疊圖是後續低成本工作,
+  不在本次任務(view_contract 檢視畫面本體)範圍內,已在上方「世界狀態」清單註記。
+
 ## 建議優先序
 
-1. **檢視畫面 A(view_army、view_character 已完成)** — 自足、只讀既有 gamestate、玩家常用,先做累積可見進度。剩 view_contract/view_puzzle/view_minimap 皆需世界狀態,待 2 完成後再回頭。
-2. **世界狀態 D(dwelling→foe→contract/boat)** — 逐一把 stub 換真實,解鎖 recruit/combat/town 動作與 view_contract/sidebar。
+1. **檢視畫面 A(view_army、view_character、view_contract 已完成)** — 自足、只讀既有 gamestate、玩家常用,先做累積可見進度。剩 view_puzzle/view_minimap 需 artifact/orb 世界狀態,待 2 完成後再回頭。
+2. **世界狀態 D(dwelling→foe→boat)** — 逐一把 stub 換真實,解鎖 recruit/combat/town 動作與 sidebar 動態內容。
 3. **城堡系列 B** — 待 castle 世界狀態後做。
 4. **開場/雜項 D** — 收尾。
 
