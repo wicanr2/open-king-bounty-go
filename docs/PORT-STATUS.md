@@ -44,7 +44,7 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 ### C. 動作 / 系統
 - [x] **run_combat 戰後結算**(game.c:3598)——已完成(2026-07-10):存活寫回、foe 清 tile、
       圍攻奪城 + 履約、戰敗 temp_death,見下方「combat 戰後 hook」小節。⚠ 圍攻城牆障礙佈局未做。
-- [ ] **navigate_continent** 航行換洲(1972)— 需 boat
+- [x] **navigate_continent** 航行換洲(1972)——已完成(2026-07-10,見 boat 小節)
 - [ ] **dismiss_army / dismiss_troop** 解散部隊(2027/play.c)
 - [ ] **choose_spell** 戰鬥施法(4275)— combat 已有結構,缺施法 caller(見 go issue #1)
 - [ ] **end_week** 週結算完整化(目前部分)
@@ -75,7 +75,10 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
 還需要把 C spawn_game 剩下的 contract/boat/castle/villain 世界生成移植進 gamestate.NewGame:
 
 - [x] **villain 位置 + contract 起手值**(salt_villains 已把惡棍塞進城堡;contract/last_contract/max_contract/contract_cycle 起手值已設,見下方獨立小節)——**view_contract 畫面已完成(見上表);sidebar 頭像疊圖/接受契約動作仍未做**
-- [ ] **boat**(租船 + 航行 + 上下船)
+- [x] **boat**(租船 + 航行 + 上下船 + 換洲)——已完成(2026-07-10):Boat/Mount/
+      ContinentFound 世界狀態、城鎮 B) 租船/取消、世界地圖登船/航行/靠岸、navigate_continent
+      換洲(sail_to + 消耗一週)。詳見下方「boat 系統」小節。⚠ 神器降租金(BoatCost 恆貴)、
+      連通性檢查(哪些洲可航抵)未做。
 - [x] **castle** 世界狀態(castle_owner/troops/numbers、repopulate_castle、salt_villains,見下方獨立小節)——**visit_castle 三畫面 + 圍攻/謁見已完成(2026-07-10);garrison/ungarrison/castle_visited/villain_caught 已建模**
 - [x] **dwelling** 真實兵種 + 庫存(populate_dwelling/dwelling_population;recruit.go 已讀真實世界狀態)
 - [x] **foe** 真實部隊(foe_troops/foe_numbers;worldmap.go 已讀真實世界狀態,取代 placeholderFoe)
@@ -227,6 +230,19 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
   villain_caught)屬 run_combat mode=1 戰後結算,CombatScreen 目前無戰後世界狀態回寫
   (與一般 foe 戰鬥同一缺口);② 圍攻城牆障礙佈局(combat mode=1)未建模;
   ③ lay_siege 畫面 C 版是疊在世界地圖上(無 draw_location),本移植先清成黃底。
+
+### boat 系統——已完成(2026-07-10)
+三切片,對齊 C game->boat/boat_x/boat_y/mount/continent_found 世界狀態 + 移動 boat 段
+(game.c:6837-6957)+ navigate_continent(1972)/sail_to(play.c:821):
+- **世界狀態**:GameState.Boat/BoatX/BoatY/Mount/ContinentFound;gamestate/boat.go
+  (KBMount* 常數、BoatCost、HasBoat、RentOrCancelBoat)。Town 加 BoatX/BoatY。
+- **城鎮 B) 租船/取消**:扣費停船 / 乘船中需先離船 / 取消;選單行依 HasBoat 切文字。
+- **世界地圖登船/航行/靠岸**:走進船停靠格登船(Mount=SAIL)、水域僅乘船可過、船隨玩家、
+  靠岸下船(船留上一格水域);主角 sprite 幀用 Mount(SAIL=0 船 / RIDE=8 馬)。
+- **navigate_continent**:乘船時按 'n' → NavigateContinentScreen(列 ContinentFound
+  的洲)→ SailTo(切洲 + 移入口 ContinentEntry)+ 消耗一週。
+- ⚠ 未做:神器 POWER_CHEAPER_BOAT_RENTAL 降租金(BoatCost 恆 CostBoatExpensive)、
+  「哪些洲可航抵」的連通性/探索觸發(ContinentFound 目前只有家鄉洲 + 手動設定)。
 
 ## 建議優先序
 
