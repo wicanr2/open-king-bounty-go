@@ -162,29 +162,38 @@ func (s *ViewCharacterScreen) drawStats(dst *ebiten.Image) {
 	draw := func(text string, y int) {
 		render.DrawText(dst, font, text, vcStatsX, y, color.White)
 	}
+	// drawLV 畫「標籤 …… 數值」一行:標籤靠左 vcStatsX,數值右對齊到框右緣(內縮 1 格)。
+	// 每字元恆 CJKCell 寬 → 右對齊 = rightX - 位數*CJKCell,取代舊固定空格 padding
+	// (不同字數標籤會讓數字參差,見 docs/PORT-STATUS 打磨項)。
+	rightX := vcBoxX + vcBoxW - render.CJKCell
+	drawLV := func(label string, value, y int) {
+		render.DrawText(dst, font, label, vcStatsX, y, color.White)
+		v := fmt.Sprintf("%d", value)
+		render.DrawText(dst, font, v, rightX-len([]rune(v))*render.CJKCell, y, color.White)
+	}
 
 	draw(fmt.Sprintf("%s，%s", gs.Name, title), vcGroupY(0))
-	draw(fmt.Sprintf("領導力           %5d", gs.Leadership), vcGroupY(0)+render.CJKCell)
+	drawLV("領導力", gs.Leadership, vcGroupY(0)+render.CJKCell)
 
 	// player_commission(game) 就是 game->commission 原樣回傳(play.c:769-771),
 	// 無額外加成邏輯;GameState.Commission 本身已在 acceptRank/寶箱等處累加,直接用。
-	draw(fmt.Sprintf("每週佣金         %5d", gs.Commission), vcGroupY(1))
-	draw(fmt.Sprintf("金幣             %5d", gs.Gold), vcGroupY(1)+render.CJKCell)
+	drawLV("每週佣金", gs.Commission, vcGroupY(1))
+	drawLV("金幣", gs.Gold, vcGroupY(1)+render.CJKCell)
 
-	draw(fmt.Sprintf("法術威力         %5d", gs.SpellPower), vcGroupY(2))
-	draw(fmt.Sprintf("法術上限         %5d", gs.MaxSpells), vcGroupY(2)+render.CJKCell)
+	drawLV("法術威力", gs.SpellPower, vcGroupY(2))
+	drawLV("法術上限", gs.MaxSpells, vcGroupY(2)+render.CJKCell)
 
 	// TODO(世界狀態):player_captured/player_num_artifacts 需
 	// villain_caught[]/artifact_found[] 世界狀態(尚未建模),暫佔位 0。
-	draw(fmt.Sprintf("捕獲惡棍         %5d", 0), vcGroupY(3))
-	draw(fmt.Sprintf("尋得寶物         %5d", 0), vcGroupY(3)+render.CJKCell)
+	drawLV("捕獲惡棍", 0, vcGroupY(3))
+	drawLV("尋得寶物", 0, vcGroupY(3)+render.CJKCell)
 
 	// TODO(世界狀態):player_castles 需 castle_owner[];followers_killed 需
 	// combat 把戰鬥損耗接回 gamestate(見 internal/combat/damage.go:95 既有
 	// TODO);player_score 依賴以上三者加難度加權。三者暫皆佔位 0。
-	draw(fmt.Sprintf("駐守城堡         %5d", 0), vcGroupY(4))
-	draw(fmt.Sprintf("陣亡部眾         %5d", 0), vcGroupY(4)+render.CJKCell)
-	draw(fmt.Sprintf("目前分數         %5d", 0), vcGroupY(4)+2*render.CJKCell)
+	drawLV("駐守城堡", 0, vcGroupY(4))
+	drawLV("陣亡部眾", 0, vcGroupY(4)+render.CJKCell)
+	drawLV("目前分數", 0, vcGroupY(4)+2*render.CJKCell)
 }
 
 // drawInventory 畫底部道具帶,逐字對齊 C game.c:1798-1846:黃底 + 寶物列(8格,
