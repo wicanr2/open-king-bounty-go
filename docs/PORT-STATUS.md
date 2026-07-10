@@ -34,11 +34,11 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 - [ ] **view_minimap** 小地圖/導航(game.c:1533)— 該洲縮圖(需 orb/navmap 狀態)
 
 ### B. 地點畫面(多需世界狀態)
-- [ ] **visit_castle / visit_own_castle / visit_home_castle** 城堡(2307/2381/2567)— 需 castle_owner/troops/numbers
-- [ ] **lay_siege** 攻城(2520)
-- [ ] **audience_with_king** 謁見國王(2130)
+- [x] **visit_castle / visit_own_castle / visit_home_castle** 城堡(2307/2381/2567)——已完成(2026-07-10),見下方獨立小節
+- [x] **lay_siege** 攻城(2520)——已完成(進圍攻戰;⚠ 勝利奪城 + 城牆障礙未做,見小節)
+- [x] **audience_with_king** 謁見國王(2130)——已完成(兩頁對話 + 達門檻晉升)
 - [ ] **visit_alcove** 魔法密室(2896)
-- [ ] **visit_telecave / select_gate** 傳送洞(2973/4146)
+- [ ] **visit_telecave / select_gate** 傳送洞(2973/4146)— select_gate 需 castle_visited(已建模)
 - [ ] **read_signpost** 路標(3095)
 
 ### C. 動作 / 系統
@@ -61,7 +61,7 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
 
 - [x] **villain 位置 + contract 起手值**(salt_villains 已把惡棍塞進城堡;contract/last_contract/max_contract/contract_cycle 起手值已設,見下方獨立小節)——**view_contract 畫面已完成(見上表);sidebar 頭像疊圖/接受契約動作仍未做**
 - [ ] **boat**(租船 + 航行 + 上下船)
-- [x] **castle** 世界狀態(castle_owner/troops/numbers、repopulate_castle、salt_villains,見下方獨立小節)——**visit_castle 等城堡畫面仍未做**
+- [x] **castle** 世界狀態(castle_owner/troops/numbers、repopulate_castle、salt_villains,見下方獨立小節)——**visit_castle 三畫面 + 圍攻/謁見已完成(2026-07-10);garrison/ungarrison/castle_visited/villain_caught 已建模**
 - [x] **dwelling** 真實兵種 + 庫存(populate_dwelling/dwelling_population;recruit.go 已讀真實世界狀態)
 - [x] **foe** 真實部隊(foe_troops/foe_numbers;worldmap.go 已讀真實世界狀態,取代 placeholderFoe)
 - [ ] **artifact / scepter**(拼圖、尋寶、破關條件;座標已記錄於 map tile,尚未接 UI/撿拾邏輯)
@@ -187,12 +187,39 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
   已過期(Contract 欄位與 GR_VILLAIN 素材現已齊備),補上疊圖是後續低成本工作,
   不在本次任務(view_contract 檢視畫面本體)範圍內,已在上方「世界狀態」清單註記。
 
+### 城堡系列(visit_castle)——已完成(2026-07-10)
+
+移植自 `visit_castle`/`visit_home_castle`/`visit_own_castle`/`lay_siege`/`recruit_soldiers`/
+`audience_with_king`(game.c:2130-2660)+ `garrison_troop`/`ungarrison_troop`/
+`save_castle_owner_knowledge`/`player_captured`(play.c),逐句對照 C:
+
+- **gamestate 動作層** `internal/gamestate/castle_actions.go` + `rank.go`:
+  - `CastleAt(cont,x,y)` 分派器(land.ini special0 = 家鄉;castles.ini 座標 → your/enemy)。
+  - `GarrisonTroop`/`UngarrisonTroop`/`dismissTroop`(Army[5]Squad ↔ C player_troops/numbers)。
+  - `SaveCastleOwnerKnowledge`(OR 進 `KBCastleKnown` 位)、`HomeTroops`(DWELLING_CASTLE)。
+  - `VillainCaught[]`/`PlayerCaptured`/`VillainsNeeded`(晉升門檻,audience 用)。
+  - 常數 `KBCastlePlayer/Monsters/Known/Villain`、`HomeCastleName`「馬克馬斯國王」
+    (index MAX_CASTLES,不受 free refill_names 覆寫)。
+- **五個畫面** `internal/screen/castle{home,own,siege}.go` + `recruitsoldiers.go` + `audience.go`:
+  - 家鄉:王座廳選單 A)招募士兵→RecruitSoldiersScreen(5 城堡兵種、無庫存上限)
+    B)謁見國王→AudienceScreen(兩頁對話,達門檻建構時 Promote)。
+  - 自家:駐防/撤離兩模式(Confirm 切換,對齊 C 空白鍵),A-E 對五格操作。
+  - 敵方:圍攻詢問 y/n,惡棍佔領時記下已知統治者,y → 以城堡守軍佈陣 Push 戰鬥。
+- **worldmap.go** 城堡 tile 分派;進 your/enemy 記 `castle_visited`(供 select_gate)。
+- **chrome.go** 抽 `drawLocationBg` 共用(背景 + 迎賓兵種幾何,家鄉/招兵重用)。
+- 桌面 ffmpeg 截圖驗證四畫面版面忠實;6 個 screen 測試綠。
+- **⚠ 未完成(誠實標註)**:① 圍攻勝利後奪城(castle_owner=玩家、守軍換玩家駐防、
+  villain_caught)屬 run_combat mode=1 戰後結算,CombatScreen 目前無戰後世界狀態回寫
+  (與一般 foe 戰鬥同一缺口);② 圍攻城牆障礙佈局(combat mode=1)未建模;
+  ③ lay_siege 畫面 C 版是疊在世界地圖上(無 draw_location),本移植先清成黃底。
+
 ## 建議優先序
 
 1. **檢視畫面 A(view_army、view_character、view_contract 已完成)** — 自足、只讀既有 gamestate、玩家常用,先做累積可見進度。剩 view_puzzle/view_minimap 需 artifact/orb 世界狀態,待 2 完成後再回頭。
-2. **世界狀態 D(dwelling→foe→boat)** — 逐一把 stub 換真實,解鎖 recruit/combat/town 動作與 sidebar 動態內容。
-3. **城堡系列 B** — 待 castle 世界狀態後做。
-4. **開場/雜項 D** — 收尾。
+2. **世界狀態 D(dwelling→foe→boat)** — 逐一把 stub 換真實,解鎖 recruit/combat/town 動作與 sidebar 動態內容。boat 是 town B)租船 + navigate_continent 的前置。
+3. **城堡系列 B** — ✅ 已完成(2026-07-10)。剩戰後奪城(需 combat 戰後 hook,與一般 foe 戰鬥共通)。
+4. **combat 戰後結算 hook** — 一次解決 foe 戰鬥清 tile + 圍攻奪城 + villain_caught,是多處共用的缺口。
+5. **開場/雜項 D** — 收尾。
 
 > 每項:以 C 源為規格 → 桌面 debug flag 截圖對齊 → gamestate 邏輯旗艦自己做、
 > 解碼/render/佈局派便宜 subagent → docker build/test 綠 + 截圖驗收才 commit。
