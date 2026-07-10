@@ -22,11 +22,11 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 | 觸控層(每畫面 Keymap 自動生成) | — | input/touch.go |
 | CJK 雙層合成 | env-sdl cjk overlay | render/cjktext.go |
 | **軍隊檢視** | view_army | viewarmy.go(+ gamestate/morale.go:troop_morale/morale_chart/morale_names) |
+| **角色檢視** | view_character | viewcharacter.go(班底立繪 + 數值框 + 底部道具帶;player_captured/num_artifacts/castles/score/followers_killed 為世界狀態佔位 0,artifact_found 全空、continent_found 僅 home 洲) |
 
 ## ⬜ 剩餘畫面(以 C 源為規格逐一移植)
 
 ### A. 檢視畫面(主要是顯示既有 gamestate,自足、優先)
-- [ ] **view_character** 角色表(game.c:1736)— 職業/階級/領導力/傷害加成/魔力/契約數…
 - [ ] **view_contract** 懸賞契約(game.c:1641)— 目標 villain 頭像 + 資訊(需 contract 世界狀態)
 - [ ] **view_puzzle** 拼圖(game.c:1392)— 5×5 拼圖(需 artifact/villain 世界狀態)
 - [ ] **view_minimap** 小地圖/導航(game.c:1533)— 該洲縮圖(需 orb/navmap 狀態)
@@ -67,10 +67,19 @@ worldmap 的 foe/dwelling)。要讓它們變真實,需把 C spawn_game/salt_cont
 
 ## 建議優先序
 
-1. **檢視畫面 A(view_character,view_army 已完成)** — 自足、只讀既有 gamestate、玩家常用,先做累積可見進度。
+1. **檢視畫面 A(view_army、view_character 已完成)** — 自足、只讀既有 gamestate、玩家常用,先做累積可見進度。剩 view_contract/view_puzzle/view_minimap 皆需世界狀態,待 2 完成後再回頭。
 2. **世界狀態 D(dwelling→foe→contract/boat)** — 逐一把 stub 換真實,解鎖 recruit/combat/town 動作與 view_contract/sidebar。
 3. **城堡系列 B** — 待 castle 世界狀態後做。
 4. **開場/雜項 D** — 收尾。
 
 > 每項:以 C 源為規格 → 桌面 debug flag 截圖對齊 → gamestate 邏輯旗艦自己做、
 > 解碼/render/佈局派便宜 subagent → docker build/test 綠 + 截圖驗收才 commit。
+
+## 已知待打磨(跨畫面,非阻塞)
+
+- [ ] **數字欄右對齊**:C 格式字串用空格 padding 假設每個 CJK 字 = 2 個 ASCII 格,
+      但本移植 CJK 渲染是 1 格/字(雙層合成的專案慣例,換來 CJK 更銳利)。故有 `%Nd`
+      右對齊數字的畫面(view_character/view_army/recruit)不同長度標籤的數字 x 位置
+      略參差、偶有貼近/溢出框邊。**cosmetic、跨畫面一致、非 regression**。正解=寫個
+      CJK 格寬感知的欄位對齊 helper(從框右緣算數字 x,不靠空格 padding),之後一次
+      套用到所有這類畫面。

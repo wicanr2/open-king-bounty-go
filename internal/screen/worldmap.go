@@ -118,6 +118,10 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 			// 檢視軍隊(對齊 C combat_options_menu / 世界地圖選單「檢視軍隊」項):
 			// 疊上 ViewArmyScreen,ESC 離開後回地圖(Push,非 Replace)。
 			return Push(NewViewArmyScreen(s.gs, s.assets))
+		case 'c':
+			// 檢視角色(對齊 C combat_options_menu / 世界地圖選單「檢視角色」項):
+			// 疊上 ViewCharacterScreen,ESC 離開後回地圖(Push,非 Replace)。
+			return Push(NewViewCharacterScreen(s.gs, s.assets))
 		}
 	}
 
@@ -325,6 +329,7 @@ func (s *WorldMapScreen) Keymap() input.Keymap {
 			{Rune: 's', Label: "存檔"},
 			{Rune: 'l', Label: "讀檔"},
 			{Rune: 'v', Label: "軍隊"},
+			{Rune: 'c', Label: "角色"},
 		},
 	}
 }

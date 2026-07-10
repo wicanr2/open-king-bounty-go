@@ -25,6 +25,7 @@ var (
 	townID        = flag.Int("townid", 0, "debug:配合 -starttown,指定要進哪個鎮(0-25,對應 gamestate.Town.ID)")
 	startRecruit  = flag.Bool("startrecruit", false, "debug:直接進招兵(棲地)畫面(截圖驗證用)")
 	startViewArmy = flag.Bool("startviewarmy", false, "debug:直接進軍隊檢視畫面(截圖驗證用)")
+	startViewChar = flag.Bool("startviewchar", false, "debug:直接進角色檢視畫面(截圖驗證用)")
 	recruitRtype  = flag.Int("rtype", 0, "debug:配合 -startrecruit,棲地類型(0=平原 1=森林 2=山丘 3=地下城)")
 	recruitTroop  = flag.Int("recruittroop", 0, "debug:配合 -startrecruit,招募兵種 TroopID")
 	worldSeed     = flag.Uint("seed", uint(gamestate.DefaultWorldSeed), "debug:配合 -starttown/-startclass,指定 salt_spells 等世界生成用的 RNG seed")
@@ -46,6 +47,14 @@ func rootScreen(a *kbdata.Assets) screen.Screen {
 	if *startViewArmy {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
 		return screen.NewViewArmyScreen(gs, a)
+	}
+	if *startViewChar {
+		class := 0
+		if *startClass >= 0 && *startClass < 4 {
+			class = *startClass
+		}
+		gs := gamestate.NewGame(a, "Sir Loin", class, uint32(*worldSeed))
+		return screen.NewViewCharacterScreen(gs, a)
 	}
 	if *startClass >= 0 && *startClass < 4 {
 		gs := gamestate.NewGame(a, "Sir Loin", *startClass, gamestate.DefaultWorldSeed)
@@ -129,6 +138,20 @@ func main() {
 			continue
 		}
 		screen.SetTroopSprite(id, sp)
+	}
+	// 班底立繪(view_character 用):sub_id 對照見 screen.SetPortrait 註解
+	// (DOS_class_names 順序,與 GameState.Class 直接同一欄位)。
+	for class, name := range [4]string{"knig", "pala", "sorc", "barb"} {
+		if art, err := render.LoadPNGTileNamed(*datadir, name+".png"); err == nil {
+			screen.SetPortrait(class, art)
+		} else {
+			log.Printf("load portrait %s: %v", name, err)
+		}
+	}
+	if items, err := render.LoadSpriteOpaque(*datadir, "view.png", 40, 34); err == nil {
+		screen.SetViewItems(items)
+	} else {
+		log.Printf("load view items: %v", err)
 	}
 
 	ebiten.SetWindowSize(app.LogicalW*3, app.LogicalH*3)

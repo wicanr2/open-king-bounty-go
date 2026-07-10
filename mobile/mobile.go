@@ -93,6 +93,19 @@ func init() {
 			}
 			screen.SetTroopSprite(id, sp)
 		}
+		// 班底立繪(view_character 用),同桌面版 main.go 的 sub_id 對照。
+		for class, name := range [4]string{"knig", "pala", "sorc", "barb"} {
+			if art, err := render.LoadPNGTileFS(embedded.FS(), "free/"+name+".png"); err == nil {
+				screen.SetPortrait(class, art)
+			} else {
+				log.Printf("load portrait %s: %v", name, err)
+			}
+		}
+		if items, err := render.LoadSpriteOpaqueFS(embedded.FS(), "free/view.png", 40, 34); err == nil {
+			screen.SetViewItems(items)
+		} else {
+			log.Printf("load view items: %v", err)
+		}
 	}
 
 	// SetGame 讓 ebitenmobile 生成的 Java/Kotlin 綁定驅動這顆遊戲迴圈。

@@ -78,3 +78,34 @@ var titleArt *ebiten.Image
 
 // SetTitleArt 由進入點在載入資產後設定標題圖。
 func SetTitleArt(img *ebiten.Image) { titleArt = img }
+
+// portraitArt 是四職業班底立繪(GR_PORTRAIT,knig/pala/sorc/barb.png,96×102,
+// 不去背),索引直接對齊 C DOS_class_names[class] 與 GameState.Class 同一欄位
+// (free-data.c:982 case GR_PORTRAIT 用 game->class 原樣當 sub_id,charselect.go
+// classNames 的職業順序與此一致,不必重排)。view_character 畫面使用。
+var portraitArt [4]*ebiten.Image
+
+// SetPortrait 由進入點在載入資產後設定第 class 個班底立繪(0-3,越界忽略)。
+func SetPortrait(class int, img *ebiten.Image) {
+	if class < 0 || class >= len(portraitArt) {
+		return
+	}
+	portraitArt[class] = img
+}
+
+// Portrait 回傳第 class 個班底立繪,可能為 nil(素材未載入),呼叫端須 nil-safe。
+func Portrait(class int) *ebiten.Image {
+	if class < 0 || class >= len(portraitArt) {
+		return nil
+	}
+	return portraitArt[class]
+}
+
+// viewItemSprite 是角色檢視畫面底部道具帶素材(GR_VIEW,view.png,不去背)。
+// 幀寬固定 40px:對齊 view_character 版面常數 pos.w/6(見 viewcharacter.go 檔頭
+// 註解),不是 view.png 原生 tile 寬——C 版對這張圖不設 image_cutout,是用畫面
+// 幾何常數重切;幀高 34px = view.png 原生高度。
+var viewItemSprite *render.Sprite
+
+// SetViewItems 由進入點在載入資產後設定 view.png sprite。
+func SetViewItems(s *render.Sprite) { viewItemSprite = s }
