@@ -19,23 +19,130 @@ import (
 // (mapX/mapY/mapTileW/mapTileH,定義在 worldmap.go),棋盤 BoardW×BoardH(6×5)
 // 從 (mapX,mapY) 起、每格 mapTileW×mapTileH,不需要另外的置中常數。
 
+// combatKind 標記這場戰鬥的來源,決定戰後把 side 1 存活單位寫回哪塊世界狀態、
+// 以及戰勝的額外結算(清 foe tile / 奪城 + 履約)。
+type combatKind int
+
+const (
+	combatDebug  combatKind = iota // debug/截圖用,不做任何戰後世界狀態回寫
+	combatFoe                      // 世界地圖遭遇 foe(對齊 C run_combat mode 0)
+	combatSiege                    // 圍攻城堡(對齊 C run_combat mode 1)
+)
+
+// combatContext 描述戰鬥來源,供 applyOutcome 做 C run_combat 的戰後結算。
+type combatContext struct {
+	kind      combatKind
+	cont      int // foe:所在洲(寫回 FoeTroops/Numbers、清 tile 用)
+	x, y      int // foe:戰勝後要清成 0 的地圖 tile 座標
+	foeID     int // foe:FoeTroops/Numbers 索引
+	castleID  int // siege:CastleTroops/Numbers/Owner 索引
+	gsPointer *gamestate.GameState
+}
+
 // CombatScreen 是戰鬥畫面:6×5 棋盤,玩家用方向鍵操作 side 0,AI 自動走 side 1。
 // 走進相鄰敵格 = 攻擊;Confirm = 待命;Cancel = 撤退(回地圖)。勝負後任意鍵回地圖。
 type CombatScreen struct {
-	combat *combat.Combat
-	assets *kbdata.Assets
-	rng    kbrng.Rand
-	result int // 0 進行中 / combat.ResultPlayerWon / combat.ResultAIWon
+	combat  *combat.Combat
+	assets  *kbdata.Assets
+	rng     kbrng.Rand
+	result  int // 0 進行中 / combat.ResultPlayerWon / combat.ResultAIWon
+	ctx     combatContext
+	applied bool // applyOutcome 只跑一次(避免每幀重複結算)
 }
 
-// NewCombatScreen 佈陣一場玩家 vs 敵方部隊的戰鬥。seed 給戰鬥 RNG(TODO:改接世界持久 RNG)。
+// NewCombatScreen 佈陣一場玩家 vs 敵方部隊的戰鬥(debug/一般用,不做戰後世界狀態回寫)。
+// seed 給戰鬥 RNG(TODO:改接世界持久 RNG)。有世界狀態回寫需求時用
+// NewCombatScreenFoe / NewCombatScreenSiege。
 func NewCombatScreen(gs *gamestate.GameState, a *kbdata.Assets, foe [combat.MaxUnits]gamestate.Squad, seed uint32) *CombatScreen {
 	c := &combat.Combat{}
 	rng := kbrng.NewGlibc(seed)
 	combat.PrepareUnitsPlayer(c, 0, gs, a)
 	combat.PrepareUnitsFoe(c, 1, foe, a)
 	c.ResetMatch(a, rng, false)
-	return &CombatScreen{combat: c, assets: a, rng: rng}
+	return &CombatScreen{combat: c, assets: a, rng: rng, ctx: combatContext{kind: combatDebug, gsPointer: gs}}
+}
+
+// NewCombatScreenFoe 佈陣一場世界地圖 foe 遭遇戰(對齊 C run_combat mode 0):
+// 戰後把 side 1 存活單位寫回 gs.FoeTroops/Numbers[cont][foeID],戰勝則把 (x,y) tile 清 0。
+func NewCombatScreenFoe(gs *gamestate.GameState, a *kbdata.Assets, foe [combat.MaxUnits]gamestate.Squad, cont, foeID, x, y int) *CombatScreen {
+	s := NewCombatScreen(gs, a, foe, uint32(x*kbdata.LevelH+y+1))
+	s.ctx = combatContext{kind: combatFoe, cont: cont, foeID: foeID, x: x, y: y, gsPointer: gs}
+	return s
+}
+
+// NewCombatScreenSiege 佈陣一場圍攻戰(對齊 C run_combat mode 1):以城堡守軍為敵軍,
+// 戰後把 side 1 存活單位寫回 gs.CastleTroops/Numbers[castleID];戰勝則奪城(owner=玩家)、
+// 若守軍首腦正是當前契約目標則履約(FulfillContract)。
+func NewCombatScreenSiege(gs *gamestate.GameState, a *kbdata.Assets, castleID int) *CombatScreen {
+	var foe [combat.MaxUnits]gamestate.Squad
+	for i := 0; i < combat.MaxUnits; i++ {
+		if castleID >= 0 && castleID < len(gs.CastleTroops) && gs.CastleNumbers[castleID][i] > 0 {
+			foe[i] = gamestate.Squad{TroopID: gs.CastleTroops[castleID][i], Count: gs.CastleNumbers[castleID][i]}
+		} else {
+			foe[i] = gamestate.Squad{TroopID: 255}
+		}
+	}
+	c := &combat.Combat{}
+	rng := kbrng.NewGlibc(uint32(castleID + 1))
+	combat.PrepareUnitsPlayer(c, 0, gs, a)
+	combat.PrepareUnitsCastle(c, 1, foe, a)
+	c.ResetMatch(a, rng, false)
+	return &CombatScreen{combat: c, assets: a, rng: rng, ctx: combatContext{kind: combatSiege, castleID: castleID, gsPointer: gs}}
+}
+
+// applyOutcome 做 C run_combat 收尾的戰後結算(只跑一次)。順序對齊 game.c:3598-3652:
+// 先寫回兩側存活單位;foe 戰勝清 tile;戰敗 temp_death;戰勝結算 spoils/奪城/履約。
+func (s *CombatScreen) applyOutcome() {
+	if s.applied {
+		return
+	}
+	s.applied = true
+	gs := s.ctx.gsPointer
+	if gs == nil || s.ctx.kind == combatDebug {
+		return
+	}
+	won := s.result == combat.ResultPlayerWon
+
+	// 1) 存活單位寫回世界狀態(對齊 accept_units_player + accept_units_foe/castle)。
+	combat.AcceptUnitsPlayer(s.combat, 0, gs)
+	switch s.ctx.kind {
+	case combatFoe:
+		troops, numbers := combat.AcceptSquads(s.combat, 1, 3) // foe 只 3 格
+		for i := 0; i < 3; i++ {
+			gs.FoeTroops[s.ctx.cont][s.ctx.foeID][i] = troops[i]
+			gs.FoeNumbers[s.ctx.cont][s.ctx.foeID][i] = numbers[i]
+		}
+		if won && gs.WorldMap != nil {
+			gs.WorldMap.Set(s.ctx.cont, s.ctx.x, s.ctx.y, 0) // 對齊 C:戰勝把 foe tile 清 0
+		}
+	case combatSiege:
+		troops, numbers := combat.AcceptSquads(s.combat, 1, combat.MaxUnits)
+		for i := 0; i < combat.MaxUnits; i++ {
+			gs.CastleTroops[s.ctx.castleID][i] = troops[i]
+			gs.CastleNumbers[s.ctx.castleID][i] = numbers[i]
+		}
+	}
+
+	// 2) 戰敗:temp_death(清隊伍發農夫)。
+	if s.result == combat.ResultAIWon {
+		gs.TempDeath(s.assets)
+		return
+	}
+
+	// 3) 戰勝:spoils + 圍攻奪城/履約(對齊 game.c:3630-3648)。
+	if won {
+		gs.Gold += s.combat.Spoils[1]
+		if s.ctx.kind == combatSiege {
+			owner := gs.CastleOwner[s.ctx.castleID]
+			if owner != gamestate.KBCastleMonsters {
+				vid := int(owner & gamestate.KBCastleVillain)
+				if int(gs.Contract) == vid {
+					gs.FulfillContract(s.assets, vid)
+				}
+			}
+			gs.CastleOwner[s.ctx.castleID] = gamestate.KBCastlePlayer
+		}
+	}
 }
 
 // NewDebugCombatScreen 建一場對佔位敵方(野狼×5)的戰鬥,供 debug/截圖用(固定 seed)。
@@ -75,9 +182,11 @@ func (s *CombatScreen) Update(a input.Action) Transition {
 	}
 	if w := c.Winner(); w == 0 {
 		s.result = combat.ResultPlayerWon
+		s.applyOutcome()
 		return Stay()
 	} else if w == 1 {
 		s.result = combat.ResultAIWon
+		s.applyOutcome()
 		return Stay()
 	}
 

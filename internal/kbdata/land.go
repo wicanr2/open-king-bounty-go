@@ -160,6 +160,18 @@ func ParseWorldMap(data []byte) (*WorldMap, error) {
 	return m, nil
 }
 
+// Set 寫入指定洲座標 (x, y) 的 tile byte(界外靜默略過,呼叫端不必先做邊界檢查)。
+// 對齊 C 版 `game->map[cont][y][x] = v`(如 run_combat 戰勝後把 foe tile 清成 0)。
+func (m *WorldMap) Set(cont, x, y int, v byte) {
+	if m == nil || cont < 0 || cont >= len(m.Tiles) {
+		return
+	}
+	if y < 0 || y >= LevelH || x < 0 || x >= LevelW {
+		return
+	}
+	m.Tiles[cont][y][x] = v
+}
+
 // Tile 回傳指定洲座標 (x, y) 的原始 tile byte。
 // 座標或洲別界外一律回傳 TileGrass(0)當安全值,呼叫端不必自行邊界檢查。
 func (m *WorldMap) Tile(cont, x, y int) byte {

@@ -73,14 +73,13 @@ func (s *CastleSiegeScreen) Update(a input.Action) Transition {
 	return Stay()
 }
 
-// siege 進圍攻戰:以城堡守軍(CastleTroops/CastleNumbers)當敵軍佈陣。
-// seed 用 castleID 衍生,對齊「同一座城堡的戰鬥可重現」(戰鬥 RNG 尚未接世界持久 RNG)。
+// siege 進圍攻戰:以城堡守軍(CastleTroops/CastleNumbers)當敵軍佈陣,戰後由
+// CombatScreen(combatSiege 情境)做奪城/履約結算(對齊 C run_combat mode 1)。
 func (s *CastleSiegeScreen) siege() Transition {
 	if s.gs == nil || s.castleID < 0 || s.castleID >= len(s.gs.CastleTroops) {
 		return Pop()
 	}
-	foe := foeSquadsFrom(s.gs.CastleTroops[s.castleID], s.gs.CastleNumbers[s.castleID])
-	return Push(NewCombatScreen(s.gs, s.assets, foe, uint32(s.castleID+1)))
+	return Push(NewCombatScreenSiege(s.gs, s.assets, s.castleID))
 }
 
 func (s *CastleSiegeScreen) Draw(dst *ebiten.Image) {

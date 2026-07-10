@@ -228,7 +228,8 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 	if tile == kbdata.TileFoe {
 		foeID := findFoeID(s.gs, s.cont, nx, ny)
 		foe := foeSquadsFrom(s.gs.FoeTroops[s.cont][foeID], s.gs.FoeNumbers[s.cont][foeID])
-		return Push(NewCombatScreen(s.gs, s.assets, foe, uint32(nx*kbdata.LevelH+ny+1)))
+		// 戰後回寫:存活敵軍寫回 FoeTroops/Numbers,戰勝清 (nx,ny) tile(對齊 C run_combat mode 0)。
+		return Push(NewCombatScreenFoe(s.gs, s.assets, foe, s.cont, foeID, nx, ny))
 	}
 	// 踩到棲地 → 招兵(疊上 RecruitScreen,離開後回地圖)。rtype 對齊 C
 	// game.c:6915 visit_dwelling(game, m - TILE_DWELLING_1):TileDwelling1..4 依序
