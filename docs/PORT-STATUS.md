@@ -49,7 +49,7 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 - [x] **navigate_continent** 航行換洲(1972)——已完成(2026-07-10,見 boat 小節)
 - [x] **dismiss_army / dismiss_troop** 解散部隊(2027/play.c)——已完成(2026-07-10):
       世界地圖 'd',列部隊選解散;最後一支需確認 → temp_death。
-- [ ] **choose_spell** 戰鬥施法(4275)— combat 已有結構,缺施法 caller(見 go issue #1)
+- [x] **choose_spell** 戰鬥+冒險施法(4275)——已完成(2026-07-10):全 14 法術,見下方剩餘清單。
 - [ ] **end_week** 週結算完整化(目前部分)
 - [x] 寶箱 take_chest(踩寶箱)——已完成(2026-07-10):海圖解鎖下一洲(補上 boat
       的探索觸發)/寶珠 orb_found /寶藏(金幣·領導力二選一·收入·法力·法術上限·獲法術·空箱)。
@@ -260,9 +260,12 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
 ### 2026-07-10 大進度後的剩餘清單(核心遊戲循環已閉合)
 title→選角→世界地圖→(城鎮契約·租船·情報·學法術 / 城堡家鄉·自家·圍攻 / 棲地招兵 /
 foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解散部隊 / 換洲航行 / 存讀檔含位置)
-全通。**剩餘(多需 artifact/scepter 世界狀態或屬收尾)**:
-- **choose_spell**(overworld + combat 施法;含 select_gate 城堡/鄉鎮傳送、find_villain 等 overworld 法術效果)——最大的剩餘系統,需法術效果引擎。
-- **artifact / scepter**(拾取、view_puzzle 拼圖、破關條件)——破關鏈,需 artifact 世界狀態 + UI。
+全通。**剩餘**:
+- [x] **choose_spell** — ✅ 已完成(2026-07-10):全 14 法術。冒險 7(造橋·停時·尋敵·城堡傳送·
+  鄉鎮傳送·即時軍隊·提升控制,世界地圖 'z')+ 戰鬥 7(分身·瞬移·火球·閃電·冰凍·復活·驅散
+  不死,CombatScreen 'z' + 棋盤目標游標)。效果引擎 combat/spells.go + gamestate/spellcast.go
+  + adventure_spells.go + gate.go。⚠ 神器加成(Powers)未接。
+- **artifact / scepter**(拾取、view_puzzle 拼圖、破關條件)——破關鏈,需 artifact 世界狀態 + UI。**最大的剩餘系統**。
 - **view_minimap**(orb 已建模 OrbFound,缺小地圖繪製)、**visit_alcove**(魔法密室)。
 - **end_week 完整化**(目前 EndWeek 是玩家面近似,缺巢穴/城堡/foe 增兵、精確 week_id)。
 - **開場**:display_logo(NWC)、show_credits(credits.txt 已在 free)、display_cartoon(free 版可能空)。
