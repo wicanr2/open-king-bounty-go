@@ -71,16 +71,19 @@ func (t TouchLayout) Controls() []Control {
 	//   (a) 若 Keymap 提供 LetterRects(選單型畫面,如城鎮):字母熱區用畫面既有選單
 	//       各行的矩形,設 Hidden(不另畫按鈕),點選單那一行即選該項——對齊 C 選單。
 	//   (b) 否則(如選角):在下方中央排一排可見按鈕,每顆 30 寬。
+	// 每列最多容納數(x=82 起、每顆 32 寬):(320-82)/32 = 7 顆。超過的溢出到「上一排」
+	// (y 往上 22),不再像舊版 break 丟掉——否則第 8 顆(如世界地圖的「拼圖」p)在觸控上
+	// 永遠不可達。見 docs/theme-switching-plan.md 附帶發現。
+	const lx0, lgap, lw, ly0, lrow = 82, 32, 30, 150, 22
+	perRow := (screenW - lx0) / lgap
 	for i, it := range t.km.Letters {
 		if i < len(t.km.LetterRects) {
 			cs = append(cs, Control{t.km.LetterRects[i], Letter(it.Rune), it.Label, true})
 			continue
 		}
-		x := 82 + i*32
-		if x+30 > screenW {
-			break // 超出畫面就不再排(避免擠出邊界)
-		}
-		cs = append(cs, Control{Rect{x, 150, 30, 20}, Letter(it.Rune), it.Label, false})
+		col := i % perRow
+		row := i / perRow
+		cs = append(cs, Control{Rect{lx0 + col*lgap, ly0 - row*lrow, lw, 20}, Letter(it.Rune), it.Label, false})
 	}
 	if t.km.YesNo {
 		cs = append(cs,
