@@ -97,6 +97,10 @@ type GameState struct {
 	CastleTroops [kbdata.MaxCastles][5]int
 	// CastleNumbers[id][0..4] = 對應數量,對應 C game->castle_numbers[MAX_CASTLES][5]。
 	CastleNumbers [kbdata.MaxCastles][5]int
+	// CastleVisited[id] = 玩家是否曾造訪過該城堡(visit_castle 進 your/enemy 分支時設 1),
+	// 對應 C game->castle_visited[MAX_CASTLES](bounty.h:126)。select_gate 傳送目的地
+	// 清單只列已造訪城堡。
+	CastleVisited [kbdata.MaxCastles]byte
 
 	// Contract 系列,對應 C spawn_game 起手值(play.c:418-425)。
 	Contract      byte    // 目前接的懸賞契約 villain id;0xFF = 尚未接(C: byte contract)
