@@ -38,8 +38,10 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 - [x] **lay_siege** 攻城(2520)——已完成(進圍攻戰;⚠ 勝利奪城 + 城牆障礙未做,見小節)
 - [x] **audience_with_king** 謁見國王(2130)——已完成(兩頁對話 + 達門檻晉升)
 - [ ] **visit_alcove** 魔法密室(2896)
-- [ ] **visit_telecave / select_gate** 傳送洞(2973/4146)— select_gate 需 castle_visited(已建模)
-- [ ] **read_signpost** 路標(3095)
+- [x] **visit_telecave** 傳送洞(2973)——已完成(2026-07-10):踩洞口瞬移到成對另一端
+      (與 TileDwelling3 同值 0x8E,靠座標區分)。**select_gate**(4146,法術傳送到已訪城堡/鎮)
+      仍待 choose_spell 一起做。
+- [x] **read_signpost** 路標(3095)——已完成(2026-07-10):踩路標顯示 signs.txt 對應文字。
 
 ### C. 動作 / 系統
 - [x] **run_combat 戰後結算**(game.c:3598)——已完成(2026-07-10):存活寫回、foe 清 tile、
@@ -250,10 +252,21 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
 ## 建議優先序
 
 1. **檢視畫面 A(view_army、view_character、view_contract 已完成)** — 自足、只讀既有 gamestate、玩家常用,先做累積可見進度。剩 view_puzzle/view_minimap 需 artifact/orb 世界狀態,待 2 完成後再回頭。
-2. **世界狀態 D(dwelling→foe→boat)** — 逐一把 stub 換真實,解鎖 recruit/combat/town 動作與 sidebar 動態內容。boat 是 town B)租船 + navigate_continent 的前置。
-3. **城堡系列 B** — ✅ 已完成(2026-07-10)。剩戰後奪城(需 combat 戰後 hook,與一般 foe 戰鬥共通)。
-4. **combat 戰後結算 hook** — 一次解決 foe 戰鬥清 tile + 圍攻奪城 + villain_caught,是多處共用的缺口。
+2. **世界狀態 D(dwelling→foe→boat)** — ✅ dwelling/foe/boat 皆完成。
+3. **城堡系列 B** — ✅ 已完成(2026-07-10),含戰後奪城。
+4. **combat 戰後結算 hook** — ✅ 已完成(2026-07-10)。
 5. **開場/雜項 D** — 收尾。
+
+### 2026-07-10 大進度後的剩餘清單(核心遊戲循環已閉合)
+title→選角→世界地圖→(城鎮契約·租船·情報·學法術 / 城堡家鄉·自家·圍攻 / 棲地招兵 /
+foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解散部隊 / 換洲航行 / 存讀檔含位置)
+全通。**剩餘(多需 artifact/scepter 世界狀態或屬收尾)**:
+- **choose_spell**(overworld + combat 施法;含 select_gate 城堡/鄉鎮傳送、find_villain 等 overworld 法術效果)——最大的剩餘系統,需法術效果引擎。
+- **artifact / scepter**(拾取、view_puzzle 拼圖、破關條件)——破關鏈,需 artifact 世界狀態 + UI。
+- **view_minimap**(orb 已建模 OrbFound,缺小地圖繪製)、**visit_alcove**(魔法密室)。
+- **end_week 完整化**(目前 EndWeek 是玩家面近似,缺巢穴/城堡/foe 增兵、精確 week_id)。
+- **開場**:display_logo(NWC)、show_credits(credits.txt 已在 free)、display_cartoon(free 版可能空)。
+- **sidebar 拼圖 piece 疊圖**(需 artifact/villain 世界狀態)。
 
 > 每項:以 C 源為規格 → 桌面 debug flag 截圖對齊 → gamestate 邏輯旗艦自己做、
 > 解碼/render/佈局派便宜 subagent → docker build/test 綠 + 截圖驗收才 commit。
