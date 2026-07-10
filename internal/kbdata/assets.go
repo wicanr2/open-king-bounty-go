@@ -123,6 +123,9 @@ type Assets struct {
 	// 「每隔一個換行當分隔」的規則切成多則(見 parseSigns)。read_signpost 依路標在
 	// 地圖上的掃描序當索引取用。缺檔為 nil,呼叫端須越界安全。
 	Signs []string
+
+	// Credits 是製作名單原文(對應 C STRL_CREDITS = credits.txt 整檔),show_credits 顯示。
+	Credits string
 }
 
 // freeIniNames 是 Load 會嘗試載入的 free 資料清單(缺檔不致命)。
@@ -178,6 +181,9 @@ func LoadFS(fsys fs.FS) (*Assets, error) {
 	loadVillainDescs(fsys, a)
 	if b, err := fs.ReadFile(fsys, "free/signs.txt"); err == nil {
 		a.Signs = parseSigns(string(b))
+	}
+	if b, err := fs.ReadFile(fsys, "free/credits.txt"); err == nil {
+		a.Credits = string(b)
 	}
 	return a, nil
 }

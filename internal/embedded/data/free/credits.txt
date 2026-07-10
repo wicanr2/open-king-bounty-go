@@ -1,0 +1,11 @@
+御封戰將 設計者：
+  Jon Van Caneghem
+
+
+openkb 程式開發：
+  driedfruit
+
+free 美術設計：
+  missandei, Santiago Iborra
+
+     GNU GPL3+ CC-BY-SA

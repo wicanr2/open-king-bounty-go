@@ -23,6 +23,10 @@ func (s *TitleScreen) Update(a input.Action) Transition {
 	if a.Kind == input.ActConfirm {
 		return Replace(NewCharSelectScreen(s.assets))
 	}
+	// 'c' → 製作名單(對齊 C select_game 的 credits 分支)。
+	if a.Kind == input.ActLetter && a.Rune == 'c' {
+		return Push(NewCreditsScreen(s.assets))
+	}
 	return Stay()
 }
 
@@ -39,5 +43,8 @@ func (s *TitleScreen) Draw(dst *ebiten.Image) {
 }
 
 func (s *TitleScreen) Keymap() input.Keymap {
-	return input.Keymap{Confirm: "開始"}
+	return input.Keymap{
+		Confirm: "開始",
+		Letters: []input.LetterItem{{Rune: 'c', Label: "名單"}},
+	}
 }
