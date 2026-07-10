@@ -45,6 +45,14 @@ func NewTouchLayout(km Keymap) TouchLayout { return TouchLayout{km: km} }
 func (t TouchLayout) Controls() []Control {
 	var cs []Control
 
+	// 全域系統鍵(觸控裝置無 F8/F12):右上角「主題」切美術主題、其下「作弊」開 debug 選單。
+	// 主題由 app.handleSystem 攔 ActThemeCycle → screen.CycleTheme;作弊由 worldmap 接 ActCheat
+	// → 開 CheatMenuScreen(非遊戲畫面忽略)。放狀態列右端(該處通常無文字)。
+	cs = append(cs,
+		Control{Rect{292, 1, 26, 10}, Action{Kind: ActThemeCycle}, "主題", false},
+		Control{Rect{292, 12, 26, 10}, Action{Kind: ActCheat}, "作弊", false},
+	)
+
 	if t.km.Directions {
 		cs = append(cs,
 			Control{Rect{26, 150, 20, 16}, Action{Kind: ActUp}, "^", false},

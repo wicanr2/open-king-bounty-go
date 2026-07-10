@@ -21,6 +21,7 @@ const (
 	SymF8
 	SymF9
 	SymF10
+	SymF12
 )
 
 // Key 是一次原始按鍵:符號 + (若為 SymChar)字元。
@@ -60,6 +61,8 @@ func KeyToAction(k Key) Action {
 		return Action{Kind: ActMusicToggle}
 	case SymF10:
 		return Action{Kind: ActQuitSave}
+	case SymF12:
+		return Action{Kind: ActCheat}
 	case SymChar:
 		switch {
 		case k.Ch == 'y' || k.Ch == 'Y':

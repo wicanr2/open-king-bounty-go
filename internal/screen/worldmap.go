@@ -187,6 +187,15 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		}
 	}
 
+	// 作弊 / debug 選單(對齊 C KEY_ACT(CHEAT) → debug_cheat_menu,game.c:6796):
+	// 世界地圖按 F12 或觸控右上「作弊」鈕開啟。war==NULL 語境,'w' = win_game。
+	if a.Kind == input.ActCheat {
+		if s.gs != nil {
+			return Push(NewCheatMenuScreen(s.gs, s.assets))
+		}
+		return Stay()
+	}
+
 	if s.assets == nil || s.gs == nil || s.gs.WorldMap == nil {
 		if a.Kind == input.ActCancel {
 			return Replace(NewTitleScreen(s.assets))

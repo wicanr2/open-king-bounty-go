@@ -36,6 +36,7 @@ var (
 	castleID          = flag.Int("castleid", 0, "debug:配合 -startcastleown/-startcastlesiege,指定城堡 id(0-25)")
 	startMinimap      = flag.Bool("startminimap", false, "debug:直接進本洲小地圖畫面")
 	startPuzzle       = flag.Bool("startpuzzle", false, "debug:直接進權杖拼圖畫面(掀開部分格)")
+	startCheat        = flag.Bool("startcheat", false, "debug:直接進作弊選單(截圖驗證用)")
 	recruitRtype      = flag.Int("rtype", 0, "debug:配合 -startrecruit,棲地類型(0=平原 1=森林 2=山丘 3=地下城)")
 	recruitTroop      = flag.Int("recruittroop", 0, "debug:配合 -startrecruit,招募兵種 TroopID")
 	worldSeed         = flag.Uint("seed", uint(gamestate.DefaultWorldSeed), "debug:配合 -starttown/-startclass,指定 salt_spells 等世界生成用的 RNG seed")
@@ -76,6 +77,10 @@ func rootScreen(a *kbdata.Assets) screen.Screen {
 	if *startAudience {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
 		return screen.NewAudienceScreen(gs, a)
+	}
+	if *startCheat {
+		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
+		return screen.NewCheatMenuScreen(gs, a)
 	}
 	if *startCastleOwn {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))

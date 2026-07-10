@@ -129,6 +129,7 @@ func pollAction() input.Action {
 		ebiten.KeyF8:          input.SymF8,
 		ebiten.KeyF9:          input.SymF9,
 		ebiten.KeyF10:         input.SymF10,
+		ebiten.KeyF12:         input.SymF12,
 	}
 	for k, sym := range symOf {
 		if inpututil.IsKeyJustPressed(k) {

@@ -10,9 +10,9 @@ func TestTouchLayout_Controls(t *testing.T) {
 		Letters:    []LetterItem{{'a', "接任務"}, {'b', "租船"}, {'c', "情報"}},
 	}
 	cs := NewTouchLayout(km).Controls()
-	// 4 方向 + Confirm + Cancel + 3 字母 = 9
-	if len(cs) != 9 {
-		t.Fatalf("控制數 = %d, want 9", len(cs))
+	// 主題 + 作弊(全域 2)+ 4 方向 + Confirm + Cancel + 3 字母 = 11
+	if len(cs) != 11 {
+		t.Fatalf("控制數 = %d, want 11", len(cs))
 	}
 }
 

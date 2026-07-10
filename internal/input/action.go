@@ -36,6 +36,7 @@ const (
 	ActThemeCycle             // 切美術主題(F8)
 	ActMusicToggle            // 切音樂(F9)
 	ActQuitSave               // 存檔離開(F10)
+	ActCheat                  // 作弊 / debug 選單(F12;觸控右上「作弊」)
 )
 
 // Action 是一次語義輸入。Letter/Digit 用 Rune 帶實際字元,其餘 Rune 為 0。
