@@ -265,11 +265,16 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
   鄉鎮傳送·即時軍隊·提升控制,世界地圖 'z')+ 戰鬥 7(分身·瞬移·火球·閃電·冰凍·復活·驅散
   不死,CombatScreen 'z' + 棋盤目標游標)。效果引擎 combat/spells.go + gamestate/spellcast.go
   + adventure_spells.go + gate.go。⚠ 神器加成(Powers)未接。
-- **artifact / scepter**(拾取、view_puzzle 拼圖、破關條件)——破關鏈,需 artifact 世界狀態 + UI。**最大的剩餘系統**。
-- **view_minimap**(orb 已建模 OrbFound,缺小地圖繪製)、**visit_alcove**(魔法密室)。
+- [x] **artifact 拾取 + scepter 破關** — ✅ 已完成(2026-07-10):神器拾取(TakeArtifact,
+  即時能力 + HasPower + BoatCostWith)、權杖埋藏(PlaceScepter)+ 搜索破關(SearchScreen 'g' +
+  WinScreen)。**遊戲可從新遊戲玩到通關。** ⚠ 剩 view_puzzle 拼圖、戰鬥中神器 Powers(增傷/減傷)、
+  結局動畫/圖(版權素材)。
+- **view_puzzle**(拼圖:以 ArtifactFound/VillainCaught 逐步揭示權杖位置,5×5;ArtifactFound 已建模)、
+  **view_minimap**(orb 已建模 OrbFound,缺小地圖繪製)、**visit_alcove**(魔法密室)。
 - **end_week 完整化**(目前 EndWeek 是玩家面近似,缺巢穴/城堡/foe 增兵、精確 week_id)。
 - **開場**:display_logo(NWC)、show_credits(credits.txt 已在 free)、display_cartoon(free 版可能空)。
-- **sidebar 拼圖 piece 疊圖**(需 artifact/villain 世界狀態)。
+- **戰鬥中神器 Powers**(INCREASED_DAMAGE/QUARTER_PROTECTION;combat.Powers 目前恆 0,可從 ArtifactFound 接)。
+- **sidebar 拼圖 piece 疊圖**(需 artifact/villain 世界狀態,ArtifactFound 已建模)。
 
 > 每項:以 C 源為規格 → 桌面 debug flag 截圖對齊 → gamestate 邏輯旗艦自己做、
 > 解碼/render/佈局派便宜 subagent → docker build/test 綠 + 截圖驗收才 commit。
