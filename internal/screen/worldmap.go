@@ -33,8 +33,9 @@ func placeholderFoe() [combat.MaxUnits]gamestate.Squad {
 }
 
 // 版面對齊 C 版 openkb(data/free/ui.ini [map]/[tile] + game.c draw_map):
-//   地圖 viewport 16,21 寬240高170;每 tile 48×34 → 5×5 格;玩家永遠在正中格。
-//   Y 軸翻轉:遊戲 y 向上為北,螢幕上方 = 高 y(C: pos.y=(perim-1-j)*h+mapY)。
+//
+//	地圖 viewport 16,21 寬240高170;每 tile 48×34 → 5×5 格;玩家永遠在正中格。
+//	Y 軸翻轉:遊戲 y 向上為北,螢幕上方 = 高 y(C: pos.y=(perim-1-j)*h+mapY)。
 const (
 	mapTileW = 48
 	mapTileH = 34
@@ -162,11 +163,14 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		foe := placeholderFoe()
 		return Push(NewCombatScreen(s.gs, s.assets, foe, uint32(nx*kbdata.LevelH+ny+1)))
 	}
-	// 踩到棲地 → 招兵(疊上 RecruitScreen,離開後回地圖)
+	// 踩到棲地 → 招兵(疊上 RecruitScreen,離開後回地圖)。rtype 對齊 C
+	// game.c:6915 visit_dwelling(game, m - TILE_DWELLING_1):TileDwelling1..4 依序
+	// 對應 rtype 0=平原 1=森林 2=山丘 3=地下城。
 	if tile >= kbdata.TileDwelling1 && tile <= kbdata.TileDwelling4 {
+		rtype := int(tile - kbdata.TileDwelling1)
 		// TODO: 棲地實際教哪個兵種需世界狀態 dwelling_troop(land.ini 尚未解析);
 		// 暫寫死 demoRecruitTroopID 示範流程。
-		return Push(NewRecruitScreen(s.gs, s.assets, demoRecruitTroopID))
+		return Push(NewRecruitScreen(s.gs, s.assets, demoRecruitTroopID, rtype))
 	}
 	return Stay()
 }

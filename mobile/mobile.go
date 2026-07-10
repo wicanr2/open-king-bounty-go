@@ -68,6 +68,23 @@ func init() {
 		} else {
 			log.Printf("load town background: %v", err)
 		}
+		// 棲地背景(招募畫面用),同桌面版 main.go 的 sub_id 對照。
+		for _, d := range []struct {
+			subID int
+			file  string
+		}{
+			{0, "free/cstl.png"},
+			{2, "free/plai.png"},
+			{3, "free/frst.png"},
+			{4, "free/cave.png"},
+			{5, "free/dngn.png"},
+		} {
+			if art, err := render.LoadPNGTileFS(embedded.FS(), d.file); err == nil {
+				screen.SetLocationBg(d.subID, art)
+			} else {
+				log.Printf("load location bg %s: %v", d.file, err)
+			}
+		}
 		for id, name := range screen.TroopFileNames {
 			sp, err := render.LoadSpriteFS(embedded.FS(), "free/"+name+".png", 48, 34)
 			if err != nil {
