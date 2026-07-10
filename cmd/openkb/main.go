@@ -4,13 +4,13 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/wicanr2/open-king-bounty-go/internal/app"
 	"github.com/wicanr2/open-king-bounty-go/internal/gamestate"
 	"github.com/wicanr2/open-king-bounty-go/internal/kbdata"
-	"github.com/wicanr2/open-king-bounty-go/internal/render"
 	"github.com/wicanr2/open-king-bounty-go/internal/screen"
 )
 
@@ -145,100 +145,13 @@ func main() {
 	if err != nil {
 		log.Printf("load assets: %v(以空資料續行)", err)
 	}
-	if ts, err := render.LoadTileset(*datadir); err == nil {
-		screen.SetTileset(ts)
+	// 美術主題(module)偏好序:DOS EGA → FM Towns → free。版權主題(dos/fmtowns)未內建
+	// 時自動缺席,退回 free。整套美術(tileset + 所有 sprite + UI)由 screen.LoadArt 一次載入;
+	// 執行期 F8 / 觸控 ☰ 切換(screen.CycleTheme)。詳見 docs/theme-switching-plan.md。
+	if active := screen.InitThemes(os.DirFS(*datadir), []string{"dos", "fmtowns", "free"}); active != "" {
+		log.Printf("art theme: %s (available: %v)", active, screen.AvailableThemes())
 	} else {
-		log.Printf("load tileset: %v(地圖退回色塊)", err)
-	}
-	if hero, err := render.LoadSprite(*datadir, "cursor.png", 48, 34); err == nil {
-		screen.SetHero(hero)
-	} else {
-		log.Printf("load hero: %v", err)
-	}
-	if sidebar, err := render.LoadSpriteOpaque(*datadir, "sidebar.png", 48, 34); err == nil {
-		screen.SetSidebar(sidebar)
-	} else {
-		log.Printf("load sidebar: %v", err)
-	}
-	if coins, err := render.LoadSpriteOpaque(*datadir, "coins.png", 16, 5); err == nil {
-		screen.SetCoins(coins)
-	} else {
-		log.Printf("load coins: %v", err)
-	}
-	if art, err := render.LoadPNGTileNamed(*datadir, "select-0.png"); err == nil {
-		screen.SetSelectArt(art)
-	} else {
-		log.Printf("load select art: %v", err)
-	}
-	if art, err := render.LoadPNGTileNamed(*datadir, "title.png"); err == nil {
-		screen.SetTitleArt(art)
-	} else {
-		log.Printf("load title art: %v", err)
-	}
-	if art, err := render.LoadPNGTileNamed(*datadir, "nwcp.png"); err == nil {
-		screen.SetLogoArt(art)
-	} else {
-		log.Printf("load logo art: %v", err)
-	}
-	if comtiles, err := render.LoadSpriteOpaque(*datadir, "comtiles.png", 48, 34); err == nil {
-		screen.SetComtiles(comtiles)
-	} else {
-		log.Printf("load comtiles: %v", err)
-	}
-	if art, err := render.LoadPNGTileNamed(*datadir, "town.png"); err == nil {
-		screen.SetLocation(art)
-	} else {
-		log.Printf("load town background: %v", err)
-	}
-	// 棲地背景(招募畫面用):sub_id 0=home(cstl) 2=平原(plai) 3=森林(frst)
-	// 4=山丘/洞穴(cave) 5=地下城(dngn),對齊 C DOS_location_names。
-	for _, d := range []struct {
-		subID int
-		file  string
-	}{
-		{0, "cstl.png"},
-		{2, "plai.png"},
-		{3, "frst.png"},
-		{4, "cave.png"},
-		{5, "dngn.png"},
-	} {
-		if art, err := render.LoadPNGTileNamed(*datadir, d.file); err == nil {
-			screen.SetLocationBg(d.subID, art)
-		} else {
-			log.Printf("load location bg %s: %v", d.file, err)
-		}
-	}
-	for id, name := range screen.TroopFileNames {
-		sp, err := render.LoadSprite(*datadir, name+".png", 48, 34)
-		if err != nil {
-			log.Printf("load troop sprite %s: %v", name, err)
-			continue
-		}
-		screen.SetTroopSprite(id, sp)
-	}
-	// 班底立繪(view_character 用):sub_id 對照見 screen.SetPortrait 註解
-	// (DOS_class_names 順序,與 GameState.Class 直接同一欄位)。
-	for class, name := range [4]string{"knig", "pala", "sorc", "barb"} {
-		if art, err := render.LoadPNGTileNamed(*datadir, name+".png"); err == nil {
-			screen.SetPortrait(class, art)
-		} else {
-			log.Printf("load portrait %s: %v", name, err)
-		}
-	}
-	if items, err := render.LoadSpriteOpaque(*datadir, "view.png", 40, 34); err == nil {
-		screen.SetViewItems(items)
-	} else {
-		log.Printf("load view items: %v", err)
-	}
-	// 惡棍臉部(view_contract 用):不去背(free-data.c case GR_VILLAIN 設
-	// is_transparent=0),同 sidebar.png 的載入方式。
-	for id, name := range screen.VillainFileNames {
-		sp, err := render.LoadSpriteOpaque(*datadir, name+".png", 48, 34)
-		if err != nil {
-			log.Printf("load villain face %s: %v", name, err)
-			continue
-		}
-		screen.SetVillainFace(id, sp)
+		log.Printf("art theme: none found in %s", *datadir)
 	}
 
 	ebiten.SetWindowSize(app.LogicalW*3, app.LogicalH*3)

@@ -29,8 +29,8 @@ type Game struct {
 	assets *kbdata.Assets
 	boot   func() // 第一幀執行一次的初始化(建立 ebiten.Image 等需繪圖/JVM 就緒的工作)
 	booted bool
-	touch  bool           // 是否繪製觸控疊層(僅行動裝置;桌面用鍵盤,畫了會污染「與 C 一模一樣」的內容區)
-	art    *ebiten.Image  // 320×200 美術層 offscreen(每幀重畫,再 nearest 放大到輸出)
+	touch  bool          // 是否繪製觸控疊層(僅行動裝置;桌面用鍵盤,畫了會污染「與 C 一模一樣」的內容區)
+	art    *ebiten.Image // 320×200 美術層 offscreen(每幀重畫,再 nearest 放大到輸出)
 }
 
 // New 建立遊戲迴圈,root 為起始畫面。boot 可為 nil;非 nil 時於「第一次 Draw」執行一次——
@@ -44,17 +44,32 @@ func New(root screen.Screen, assets *kbdata.Assets, boot func(), touch bool) *Ga
 func (g *Game) Update() error {
 	// 鍵盤優先;無鍵盤事件才看觸控/滑鼠(讀當前畫面 Keymap 命中觸控控制)。
 	if a := pollAction(); !a.IsNone() {
-		g.mgr.Update(a)
+		if !g.handleSystem(a) {
+			g.mgr.Update(a)
+		}
 		return nil
 	}
 	if tx, ty, ok := pollTap(); ok {
 		// 觸控/滑鼠座標在輸出空間(960×600),換算回 320 邏輯供觸控佈局解析。
 		layout := input.NewTouchLayout(g.mgr.Keymap())
 		if a := layout.Resolve(input.Tap{X: tx / SCALE, Y: ty / SCALE}); !a.IsNone() {
-			g.mgr.Update(a)
+			if !g.handleSystem(a) {
+				g.mgr.Update(a)
+			}
 		}
 	}
 	return nil
+}
+
+// handleSystem 攔截跨畫面的系統動作(F8 切美術主題 / 觸控 ☰ 選項),消費掉就回 true,
+// 不再往下丟給當前畫面。對齊 C openkb「module 切換是全域快捷」的語意。
+func (g *Game) handleSystem(a input.Action) bool {
+	switch a.Kind {
+	case input.ActThemeCycle:
+		screen.CycleTheme()
+		return true
+	}
+	return false
 }
 
 func (g *Game) Draw(dst *ebiten.Image) {

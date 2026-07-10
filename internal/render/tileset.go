@@ -48,14 +48,15 @@ func LoadTileset(dir string) (*Tileset, error) {
 	return &Tileset{tileseta: a, tilesetb: b}, nil
 }
 
-// LoadTilesetFS 從任意檔案系統(embed.FS)讀 tileset,行動裝置用。
-// 會建立 ebiten.Image,故必須在遊戲迴圈啟動後(JVM/繪圖就緒)呼叫,不可在 init()。
-func LoadTilesetFS(fsys fs.FS) (*Tileset, error) {
-	a, err := loadPNGFromFS(fsys, "free/tileseta.png")
+// LoadTilesetFS 從任意檔案系統(embed.FS / os.DirFS)讀 tileset。dir 是美術模組目錄名
+// (如 "free" / "dos" / "fmtowns"),對應主題切換。會建立 ebiten.Image,故必須在遊戲
+// 迴圈啟動後(JVM/繪圖就緒)呼叫,不可在 init()。
+func LoadTilesetFS(fsys fs.FS, dir string) (*Tileset, error) {
+	a, err := loadPNGFromFS(fsys, dir+"/tileseta.png")
 	if err != nil {
 		return nil, fmt.Errorf("render: LoadTilesetFS tileseta: %w", err)
 	}
-	b, err := loadPNGFromFS(fsys, "free/tilesetb.png")
+	b, err := loadPNGFromFS(fsys, dir+"/tilesetb.png")
 	if err != nil {
 		return nil, fmt.Errorf("render: LoadTilesetFS tilesetb: %w", err)
 	}
