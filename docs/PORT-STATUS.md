@@ -30,14 +30,14 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 ## ⬜ 剩餘畫面(以 C 源為規格逐一移植)
 
 ### A. 檢視畫面(主要是顯示既有 gamestate,自足、優先)
-- [ ] **view_puzzle** 拼圖(game.c:1392)— 5×5 拼圖(需 artifact/villain 世界狀態)
-- [ ] **view_minimap** 小地圖/導航(game.c:1533)— 該洲縮圖(需 orb/navmap 狀態)
+- [x] **view_puzzle** 拼圖(game.c:1392)——已完成(2026-07-10):5×5 拼圖,神器/惡棍掀開露出權杖周邊地圖。世界地圖 'p'。
+- [x] **view_minimap** 小地圖(game.c:1533)——已完成(2026-07-10):本洲 64×64 縮圖。世界地圖 'm'。
 
 ### B. 地點畫面(多需世界狀態)
 - [x] **visit_castle / visit_own_castle / visit_home_castle** 城堡(2307/2381/2567)——已完成(2026-07-10),見下方獨立小節
 - [x] **lay_siege** 攻城(2520)——已完成(進圍攻戰;⚠ 勝利奪城 + 城牆障礙未做,見小節)
 - [x] **audience_with_king** 謁見國王(2130)——已完成(兩頁對話 + 達門檻晉升)
-- [ ] **visit_alcove** 魔法密室(2896)
+- [x] **visit_alcove** 魔法密室(2896)——已完成(2026-07-10):大法師 5000 金幣傳授魔法(KnowsMagic)。
 - [x] **visit_telecave** 傳送洞(2973)——已完成(2026-07-10):踩洞口瞬移到成對另一端
       (與 TileDwelling3 同值 0x8E,靠座標區分)。**select_gate**(4146,法術傳送到已訪城堡/鎮)
       仍待 choose_spell 一起做。
