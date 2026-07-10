@@ -42,11 +42,26 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 - [ ] **read_signpost** 路標(3095)
 
 ### C. 動作 / 系統
+- [x] **run_combat 戰後結算**(game.c:3598)——已完成(2026-07-10):存活寫回、foe 清 tile、
+      圍攻奪城 + 履約、戰敗 temp_death,見下方「combat 戰後 hook」小節。⚠ 圍攻城牆障礙佈局未做。
 - [ ] **navigate_continent** 航行換洲(1972)— 需 boat
 - [ ] **dismiss_army / dismiss_troop** 解散部隊(2027/play.c)
 - [ ] **choose_spell** 戰鬥施法(4275)— combat 已有結構,缺施法 caller(見 go issue #1)
 - [ ] **end_week** 週結算完整化(目前部分)
 - [ ] 寶箱 search_area(踩寶箱)
+
+### 玩家座標 / 存讀檔——已完成(2026-07-10)
+玩家 Continent/X/Y 已從 WorldMapScreen 移入 GameState,修正存讀檔遺失位置 +
+戰敗 temp_death 傳送回家。詳見 commit「worldmap: 玩家座標移入 GameState」。
+仍未建模:mount / siege_weapons(temp_death 略過)。
+
+### combat 戰後 hook——已完成(2026-07-10)
+`internal/screen/combatscreen.go` 的 combatContext + applyOutcome 移植 C run_combat
+戰後段(game.c:3598-3652):NewCombatScreenFoe/Siege 標記來源,勝負確定時一次結算——
+AcceptUnitsPlayer/AcceptSquads 寫回兩側存活單位、foe 戰勝清 tile、圍攻奪城 +
+FulfillContract(讓 audience 晉升門檻能達成)、戰敗 TempDeath。新增
+gamestate.FulfillContract/TempDeath、combat.AcceptUnitsPlayer/AcceptSquads、
+kbdata.WorldMap.Set。⚠ 圍攻城牆障礙佈局(combat mode=1 的 castle_umap)未做。
 
 ### D. 開場 / 雜項
 - [ ] **display_logo** NWC logo(924)
