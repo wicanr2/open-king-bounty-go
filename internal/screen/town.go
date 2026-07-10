@@ -18,7 +18,7 @@ type townMode int
 
 const (
 	townModeMenu        townMode = iota // 只顯示 A-E 選單
-	townModeInfo                        // C) 蒐集情報:疊顯既有 GameState 數值(GOLD/LEADERSHIP)
+	townModeInfo                        // C) 蒐集情報:顯示對應城堡統治者+駐軍(gather_information)
 	townModeStub                        // A/B/E:需世界狀態,先顯示「未實作」提示
 	townModeLearnResult                 // D) 學習法術:顯示結果訊息(對齊 C msg_hold 三種分支)
 )
@@ -63,7 +63,8 @@ type TownScreen struct {
 	mode townMode // 目前顯示的子畫面
 	stub string   // townModeStub 時顯示的項目標籤
 
-	learnMsg []string // townModeLearnResult 時顯示的結果訊息(見 learnSpell)
+	learnMsg    []string // townModeLearnResult 時顯示的結果訊息(見 learnSpell)
+	gatherLines []string // townModeInfo(蒐集情報)時顯示的城堡情報(按 C 時算一次)
 }
 
 // NewTownScreen 建立城鎮畫面。townID 是 gamestate.Town 的索引(對應 C 版
@@ -123,6 +124,7 @@ func (s *TownScreen) activate(idx int) Transition {
 	case 'a':
 		return s.takeContract()
 	case 'c':
+		s.gatherLines = s.gatherInformation()
 		s.mode = townModeInfo
 	case 'd':
 		s.learnSpell()
@@ -190,7 +192,7 @@ func (s *TownScreen) Draw(dst *ebiten.Image) {
 
 	switch s.mode {
 	case townModeInfo:
-		drawBottomFrame(dst, s.assets, s.infoLines())
+		drawBottomFrame(dst, s.assets, s.gatherLines)
 	case townModeStub:
 		drawBottomFrame(dst, s.assets, []string{"尚未實作: " + s.stub})
 	case townModeLearnResult:
@@ -243,22 +245,47 @@ func (s *TownScreen) menuLines() []string {
 	}
 }
 
-// infoLines 是 C(蒐集情報)按下後顯示的內容。C 版 gather_information() 顯示
-// 附近城堡統治者/駐軍(需 castle_owner/castle_numbers 世界狀態,尚未建模);
-// 這裡先顯示既有 GameState 數值當佔位,讓選單流程走通。
-func (s *TownScreen) infoLines() []string {
-	gold, leadership := 0, 0
-	if s.gs != nil {
-		gold = s.gs.Gold
-		leadership = s.gs.Leadership
+// gatherInformation 對齊 C gather_information(game.c:2628):顯示對應城堡的
+// 統治者與駐軍。C 用 town id 當 castle id 索引(town N ↔ castle N),照此。
+// castle_owner==0x7F(monsters)→「無人統治」;否則為 villain id →「由 X 統治」;
+// 駐軍用 NumberName 給模糊量詞(對齊 C 不給精確數字)。
+func (s *TownScreen) gatherInformation() []string {
+	const castleOwnerMonsters = 0x7F // C bounty.h:136:0x7F=no one(monsters)
+	id := s.town.ID
+	if s.gs == nil || id < 0 || id >= len(s.gs.CastleOwner) {
+		return []string{"情報無法取得"}
 	}
-	return []string{
-		fmt.Sprintf("%s 鄉鎮", s.town.Name),
-		"",
-		"情報",
-		fmt.Sprintf("GOLD %d", gold),
-		fmt.Sprintf("LEADERSHIP %d", leadership),
+	castles := gamestate.LoadCastles(s.assets)
+	castleName := ""
+	if id < len(castles) {
+		castleName = castles[id].Name
 	}
+	lines := []string{fmt.Sprintf("城堡 %s 目前", castleName)}
+
+	owner := s.gs.CastleOwner[id]
+	if owner == castleOwnerMonsters {
+		lines = append(lines, "無人統治。")
+	} else {
+		vname := ""
+		villains := gamestate.LoadVillains(s.assets)
+		if int(owner) < len(villains) {
+			vname = villains[owner].Name
+		}
+		lines = append(lines, fmt.Sprintf("由 %s 統治。", vname))
+	}
+
+	for i := 0; i < 5; i++ {
+		if s.gs.CastleNumbers[id][i] == 0 {
+			break
+		}
+		troopName := ""
+		tid := s.gs.CastleTroops[id][i]
+		if s.assets != nil && tid >= 0 && tid < len(s.assets.Troops) {
+			troopName = s.assets.Troops[tid].Name
+		}
+		lines = append(lines, fmt.Sprintf("  %s %s", gamestate.NumberName(s.gs.CastleNumbers[id][i]), troopName))
+	}
+	return lines
 }
 
 func (s *TownScreen) Keymap() input.Keymap {
