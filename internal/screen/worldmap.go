@@ -181,6 +181,9 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		case 'm':
 			// 本洲小地圖(對齊 C KEY_ACT(VIEW_MAP)→view_minimap)。
 			return Push(NewMinimapScreen(s.gs, s.assets))
+		case 'p':
+			// 權杖拼圖(對齊 C KEY_ACT(VIEW_PUZZLE)→view_puzzle)。
+			return Push(NewPuzzleScreen(s.gs, s.assets))
 		}
 	}
 
@@ -474,6 +477,7 @@ func (s *WorldMapScreen) Keymap() input.Keymap {
 		{Rune: 'd', Label: "解散"},
 		{Rune: 'g', Label: "搜索"},
 		{Rune: 'm', Label: "地圖"},
+		{Rune: 'p', Label: "拼圖"},
 	}
 	// 會魔法時多一顆施法鈕(對齊 C 世界地圖施法鍵僅在會魔法時有意義)。
 	if s.gs != nil && s.gs.KnowsMagic {
