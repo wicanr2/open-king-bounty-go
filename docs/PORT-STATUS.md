@@ -278,10 +278,11 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
 核心 + 進階系統(城鎮/城堡/棲地/戰鬥含施法奪城/寶箱/boat/傳送/路標/解散/換洲/
 神器/破關/魔法密室/小地圖/拼圖/週結算/開場)全數移植,遊戲可從新遊戲玩到通關。
 **剩餘皆屬打磨,非阻塞**:
-- ~~view_puzzle 未掀開格的惡棍臉/神器圖示(灰底)~~ ✅ 已完成(2026-07-10):
-  未掀開格改畫 `VillainFace(id)` / `viewItemSprite.DrawFrame` 神器圖示,掀開格走
-  `worldTileset.DrawTileAt`(見 `internal/screen/puzzle.go`)。
-- sidebar 拼圖 piece 疊圖(素材疊圖;ArtifactFound 已建模)、minimap orb 迷霧(目前顯示整洲)。
+- ~~view_puzzle 未掀開格的惡棍臉/神器圖示(灰底)~~ ✅ 已完成(2026-07-10)。
+- ~~minimap orb 迷霧(顯示整洲)~~ ✅ 已完成(2026-07-10):Fog-of-war + orb 揭示(見下方主題/打磨區)。
+- ~~sidebar 契約頭像疊圖~~ ✅ 經查已實作於 chrome.go drawSidebar。
+- ~~view_character 數值右對齊~~ ✅ 已完成(2026-07-10,drawLV 右對齊框右緣)。
+- 剩:view_army/recruit 亦可套 drawLV(同 helper)、sidebar 拼圖 piece 疊圖、end_week 完整化(皆次要)。
 - 精確 week_id / opt_* gameplay 旗標、read_signpost 以外的細節音效/動畫。
 - RNG 逐 seed parity(演算法忠實,但未從第一個 rand() 起對齊 C,見 NewGame 註記)。
 - Android 模擬器整合驗收新系統(桌面 ffmpeg 已驗關鍵畫面)。
@@ -337,7 +338,10 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
 ## 📋 待辦工作項
 
 - [ ] **Android 推廣影片**(使用者 2026-07-11 要求):用**最終修改完的版本**錄製 Android 版推廣片,
-      涵蓋 DOS 預設美術、主題切換(主題鈕 DOS→Amiga→free)、戰鬥施法、拼圖、作弊選單等亮點。
+      涵蓋 DOS 預設美術、主題切換(主題鈕 DOS→Genesis→Amiga→free)、戰鬥施法、拼圖、作弊選單等亮點。
       參考 C 版 `openkb-code/scripts/make-promo.sh`;錄製流程見 skill `retro-game-playtest`
       (swipe-hold 觸控、adb screenrecord)。**待所有功能定版後再拍。**
-- [ ] Genesis 主題抽取(md-rom.c 管線;C 版本身僅 troop/villain/world 完成)。
+- [x] **Genesis 主題抽取**——✅ 完成(2026-07-10):`scripts/extract-genesis-theme.sh`(md-rom.c
+      MD_Resolve dumper,SDL2 + env hook stub)→ `data/genesis/`(44 張:tileset+25 兵種+17 惡棍)。
+      桌面 Xvfb 驗證世界地圖 + 戰鬥 Genesis 美術正確、兵種白底去背正確。UI/portrait/logo → free 補
+      (對齊 C 版部分 Genesis)。四主題齊:dos(預設)/genesis/amiga/free。
