@@ -37,6 +37,7 @@ var (
 	startMinimap      = flag.Bool("startminimap", false, "debug:直接進本洲小地圖畫面")
 	startPuzzle       = flag.Bool("startpuzzle", false, "debug:直接進權杖拼圖畫面(掀開部分格)")
 	startCheat        = flag.Bool("startcheat", false, "debug:直接進作弊選單(截圖驗證用)")
+	theme             = flag.String("theme", "", "debug:強制起始美術主題(dos/genesis/amiga/free),空=預設偏好序")
 	recruitRtype      = flag.Int("rtype", 0, "debug:配合 -startrecruit,棲地類型(0=平原 1=森林 2=山丘 3=地下城)")
 	recruitTroop      = flag.Int("recruittroop", 0, "debug:配合 -startrecruit,招募兵種 TroopID")
 	worldSeed         = flag.Uint("seed", uint(gamestate.DefaultWorldSeed), "debug:配合 -starttown/-startclass,指定 salt_spells 等世界生成用的 RNG seed")
@@ -155,6 +156,9 @@ func main() {
 	// sprite + UI)由 screen.LoadArt 載入(先鋪 free 當底再覆蓋);執行期 F8 / 觸控 ☰ 切換
 	// (screen.CycleTheme)。詳見 docs/theme-switching-plan.md。
 	if active := screen.InitThemes(os.DirFS(*datadir), []string{"dos", "genesis", "amiga", "free"}); active != "" {
+		if *theme != "" && screen.SetActiveTheme(*theme) {
+			active = *theme
+		}
 		log.Printf("art theme: %s (available: %v)", active, screen.AvailableThemes())
 	} else {
 		log.Printf("art theme: none found in %s", *datadir)

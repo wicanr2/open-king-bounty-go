@@ -178,6 +178,21 @@ func CycleTheme() string {
 	return themeMods[themeActive]
 }
 
+// SetActiveTheme 切到指定美術模組(若存在於可用清單)並重載美術;回傳是否成功。
+// 供 debug flag / 設定持久化指定起始主題用。
+func SetActiveTheme(name string) bool {
+	for i, m := range themeMods {
+		if m == name {
+			themeActive = i
+			if themeFS != nil {
+				LoadArt(themeFS, m)
+			}
+			return true
+		}
+	}
+	return false
+}
+
 // ActiveTheme 回傳目前美術模組名("" = 尚未 InitThemes 或無可用模組)。
 func ActiveTheme() string {
 	if themeActive < 0 || themeActive >= len(themeMods) {
