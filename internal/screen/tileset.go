@@ -79,6 +79,12 @@ var titleArt *ebiten.Image
 // SetTitleArt 由進入點在載入資產後設定標題圖。
 func SetTitleArt(img *ebiten.Image) { titleArt = img }
 
+// logoArt 是開場 NWC 商標圖(nwcp.png,對齊 C 版 GR_LOGO / display_logo:黑底置中)。
+var logoArt *ebiten.Image
+
+// SetLogoArt 由進入點在載入資產後設定商標圖。
+func SetLogoArt(img *ebiten.Image) { logoArt = img }
+
 // portraitArt 是四職業班底立繪(GR_PORTRAIT,knig/pala/sorc/barb.png,96×102,
 // 不去背),索引直接對齊 C DOS_class_names[class] 與 GameState.Class 同一欄位
 // (free-data.c:982 case GR_PORTRAIT 用 game->class 原樣當 sub_id,charselect.go

@@ -122,7 +122,8 @@ func rootScreen(a *kbdata.Assets) screen.Screen {
 	if *startSelect {
 		return screen.NewCharSelectScreen(a)
 	}
-	return screen.NewTitleScreen(a)
+	// 正常啟動:開場商標(display_logo)→ 標題 → 選角。
+	return screen.NewLogoScreen(a)
 }
 
 func main() {
@@ -161,6 +162,11 @@ func main() {
 		screen.SetTitleArt(art)
 	} else {
 		log.Printf("load title art: %v", err)
+	}
+	if art, err := render.LoadPNGTileNamed(*datadir, "nwcp.png"); err == nil {
+		screen.SetLogoArt(art)
+	} else {
+		log.Printf("load logo art: %v", err)
 	}
 	if comtiles, err := render.LoadSpriteOpaque(*datadir, "comtiles.png", 48, 34); err == nil {
 		screen.SetComtiles(comtiles)

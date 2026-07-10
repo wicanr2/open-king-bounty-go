@@ -58,6 +58,11 @@ func init() {
 		} else {
 			log.Printf("load title art: %v", err)
 		}
+		if art, err := render.LoadPNGTileFS(embedded.FS(), "free/nwcp.png"); err == nil {
+			screen.SetLogoArt(art)
+		} else {
+			log.Printf("load logo art: %v", err)
+		}
 		if comtiles, err := render.LoadSpriteOpaqueFS(embedded.FS(), "free/comtiles.png", 48, 34); err == nil {
 			screen.SetComtiles(comtiles)
 		} else {
@@ -118,7 +123,7 @@ func init() {
 	}
 
 	// SetGame 讓 ebitenmobile 生成的 Java/Kotlin 綁定驅動這顆遊戲迴圈。
-	mobile.SetGame(app.New(screen.NewTitleScreen(assets), assets, boot, true))
+	mobile.SetGame(app.New(screen.NewLogoScreen(assets), assets, boot, true))
 }
 
 // Dummy is a placeholder so gomobile bind sees at least one exported symbol.
