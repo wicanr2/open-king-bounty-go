@@ -48,6 +48,15 @@ type CombatScreen struct {
 	result  int // 0 進行中 / combat.ResultPlayerWon / combat.ResultAIWon
 	ctx     combatContext
 	applied bool // applyOutcome 只跑一次(避免每幀重複結算)
+
+	// 戰鬥施法 UI 狀態(見 combat_spellcast.go)。
+	spellState spellState
+	spellSel   int    // 施法選單目前高亮的法術(0-6)
+	spellID    int    // 已選定要施放的戰鬥法術(0-6)
+	curX, curY int    // 目標游標座標
+	teleSide   int    // 瞬移術:已選來源單位的 side
+	teleID     int    // 瞬移術:已選來源單位的 id
+	spellMsg   string // 施法結果訊息(頂列顯示)
 }
 
 // NewCombatScreen 佈陣一場玩家 vs 敵方部隊的戰鬥(debug/一般用,不做戰後世界狀態回寫)。
@@ -203,6 +212,11 @@ func (s *CombatScreen) Update(a input.Action) Transition {
 		return Stay()
 	}
 
+	// 施法 UI 進行中(選單/選目標)時,輸入全交給施法流程處理。
+	if s.spellState != spellNone {
+		return s.updateSpell(a)
+	}
+
 	// 玩家側:等指令。
 	dx, dy := 0, 0
 	switch a.Kind {
@@ -216,6 +230,11 @@ func (s *CombatScreen) Update(a input.Action) Transition {
 		dx = 1
 	case input.ActConfirm:
 		s.advance(true) // 待命
+		return Stay()
+	case input.ActLetter:
+		if a.Rune == 'z' {
+			s.openSpellMenu() // 施放戰鬥法術(對齊 C choose_spell 戰鬥模式)
+		}
 		return Stay()
 	case input.ActCancel:
 		return Pop() // 撤退
@@ -311,6 +330,7 @@ func (s *CombatScreen) Draw(dst *ebiten.Image) {
 	}
 
 	s.drawStatusBar(dst)
+	s.drawSpellOverlay(dst) // 施法 UI(選單/目標游標/結果訊息)疊在戰鬥畫面上
 
 	if s.result != 0 && s.assets != nil && s.assets.Font != nil {
 		msg := "勝利!"
@@ -351,5 +371,18 @@ func (s *CombatScreen) drawStatusBar(dst *ebiten.Image) {
 }
 
 func (s *CombatScreen) Keymap() input.Keymap {
-	return input.Keymap{Directions: true, Confirm: "待命", Cancel: "撤退"}
+	km := input.Keymap{Directions: true, Confirm: "待命", Cancel: "撤退"}
+	// 施法中 Confirm 的語意改為「施放/選定」;施法選單/目標選取時提供對應提示。
+	switch s.spellState {
+	case spellMenu:
+		km.Confirm = "選擇"
+	case spellTarget, spellTeleDest:
+		km.Confirm = "施放"
+	case spellNone:
+		// 玩家回合(會魔法且本回合未施法)時多一顆施法鈕。
+		if gs := s.playerGS(); gs != nil && gs.KnowsMagic && s.combat.Spells == 0 {
+			km.Letters = []input.LetterItem{{Rune: 'z', Label: "施法"}}
+		}
+	}
+	return km
 }
