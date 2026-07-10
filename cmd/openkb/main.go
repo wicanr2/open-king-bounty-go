@@ -34,6 +34,7 @@ var (
 	startRecruitSol   = flag.Bool("startrecruitsoldiers", false, "debug:直接進家鄉招兵畫面")
 	startAudience     = flag.Bool("startaudience", false, "debug:直接進謁見國王畫面")
 	castleID          = flag.Int("castleid", 0, "debug:配合 -startcastleown/-startcastlesiege,指定城堡 id(0-25)")
+	startMinimap      = flag.Bool("startminimap", false, "debug:直接進本洲小地圖畫面")
 	recruitRtype      = flag.Int("rtype", 0, "debug:配合 -startrecruit,棲地類型(0=平原 1=森林 2=山丘 3=地下城)")
 	recruitTroop      = flag.Int("recruittroop", 0, "debug:配合 -startrecruit,招募兵種 TroopID")
 	worldSeed         = flag.Uint("seed", uint(gamestate.DefaultWorldSeed), "debug:配合 -starttown/-startclass,指定 salt_spells 等世界生成用的 RNG seed")
@@ -51,6 +52,10 @@ func rootScreen(a *kbdata.Assets) screen.Screen {
 	if *startCastleHome {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
 		return screen.NewCastleHomeScreen(gs, a)
+	}
+	if *startMinimap {
+		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
+		return screen.NewMinimapScreen(gs, a)
 	}
 	if *startRecruitSol {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))

@@ -53,6 +53,16 @@ func (gs *GameState) CastleAt(a *kbdata.Assets, continent, x, y int) (CastleKind
 // HomeCastleCoords 讀家鄉城堡座標,來源 land.ini [special0](對齊 C special_coords[SP_HOME])。
 // 缺資料時回 ok=false。
 func HomeCastleCoords(a *kbdata.Assets) (continent, x, y int, ok bool) {
+	return specialCoord(a, 0)
+}
+
+// AlcoveCoords 讀魔法密室座標,來源 land.ini [special1](對齊 C special_coords[SP_ALCOVE])。
+func AlcoveCoords(a *kbdata.Assets) (continent, x, y int, ok bool) {
+	return specialCoord(a, 1)
+}
+
+// specialCoord 讀 land.ini [specialN] 的 continent/x/y。缺資料回 ok=false。
+func specialCoord(a *kbdata.Assets, idx int) (continent, x, y int, ok bool) {
 	if a == nil {
 		return 0, 0, 0, false
 	}
@@ -60,7 +70,7 @@ func HomeCastleCoords(a *kbdata.Assets) (continent, x, y int, ok bool) {
 	if ini == nil {
 		return 0, 0, 0, false
 	}
-	sec, found := ini.NumberedSection("special", 0)
+	sec, found := ini.NumberedSection("special", idx)
 	if !found {
 		return 0, 0, 0, false
 	}

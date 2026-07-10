@@ -178,6 +178,9 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		case 'g':
 			// 搜索當地(對齊 C KEY_ACT(SEARCH)→ask_search):站在權杖埋藏處搜索即破關。
 			return Push(NewSearchScreen(s.gs, s.assets))
+		case 'm':
+			// 本洲小地圖(對齊 C KEY_ACT(VIEW_MAP)→view_minimap)。
+			return Push(NewMinimapScreen(s.gs, s.assets))
 		}
 	}
 
@@ -306,6 +309,11 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 	// (對齊 C visit_dwelling 的線性掃描),RecruitScreen 內部再依 (cont,id) 讀
 	// gs.DwellingTroop/DwellingPopulation(真實世界狀態,取代舊佔位)。
 	if tile >= kbdata.TileDwelling1 && tile <= kbdata.TileDwelling4 {
+		// 對齊 C visit_dwelling 開頭:先比對魔法密室座標(special1),中則進魔法密室
+		// 而非一般招兵(game.c:2999)。
+		if s.gs.AtAlcove(s.assets) {
+			return Push(NewAlcoveScreen(s.gs, s.assets))
+		}
 		rtype := int(tile - kbdata.TileDwelling1)
 		dwellingID := findDwellingID(s.gs, cont, nx, ny)
 		if dwellingID == -1 {
@@ -465,6 +473,7 @@ func (s *WorldMapScreen) Keymap() input.Keymap {
 		{Rune: 'c', Label: "角色"},
 		{Rune: 'd', Label: "解散"},
 		{Rune: 'g', Label: "搜索"},
+		{Rune: 'm', Label: "地圖"},
 	}
 	// 會魔法時多一顆施法鈕(對齊 C 世界地圖施法鍵僅在會魔法時有意義)。
 	if s.gs != nil && s.gs.KnowsMagic {
