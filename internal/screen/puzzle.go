@@ -48,14 +48,40 @@ func (s *PuzzleScreen) Draw(dst *ebiten.Image) {
 			// Y 翻轉:拼圖 y=0 是南(低 y),畫在下方,對齊世界地圖朝向。
 			py := mapY + (gamestate.PuzzleH-1-y)*mapTileH
 			if s.gs.PuzzleOpened(x, y) {
-				vector.DrawFilledRect(dst, float32(px), float32(py), mapTileW, mapTileH, tileColor(s.gs.PuzzleTile(x, y)), false)
+				s.drawOpenedCell(dst, px, py, s.gs.PuzzleTile(x, y))
 			} else {
-				// 未掀開:灰底(對齊 C 以惡棍臉/神器圖遮蓋,素材疊圖待後續)。
-				vector.DrawFilledRect(dst, float32(px), float32(py), mapTileW, mapTileH, color.RGBA{70, 70, 70, 255}, false)
+				s.drawCoveredCell(dst, px, py, gamestate.PuzzleCellID(x, y))
 			}
 			vector.StrokeRect(dst, float32(px), float32(py), mapTileW, mapTileH, 1, color.RGBA{30, 30, 30, 255}, false)
 		}
 	}
+}
+
+// drawOpenedCell 畫掀開後露出的實際地圖 tile(有 tileset 用真美術,否則退回色塊)。
+func (s *PuzzleScreen) drawOpenedCell(dst *ebiten.Image, px, py int, tile byte) {
+	if worldTileset != nil {
+		worldTileset.DrawTileAt(dst, tile, px, py)
+		return
+	}
+	vector.DrawFilledRect(dst, float32(px), float32(py), mapTileW, mapTileH, tileColor(tile), false)
+}
+
+// drawCoveredCell 畫遮蓋物(對齊 C view_puzzle):惡棍格(id>=0)畫惡棍臉、神器格
+// (id<0)畫神器圖示;素材缺時退回灰底。
+func (s *PuzzleScreen) drawCoveredCell(dst *ebiten.Image, px, py, id int) {
+	if id >= 0 {
+		if face := VillainFace(id); face != nil {
+			face.DrawFrame(dst, 0, px, py)
+			return
+		}
+	} else {
+		artID := -id - 1
+		if viewItemSprite != nil && artID >= 0 {
+			viewItemSprite.DrawFrame(dst, artID, px, py)
+			return
+		}
+	}
+	vector.DrawFilledRect(dst, float32(px), float32(py), mapTileW, mapTileH, color.RGBA{70, 70, 70, 255}, false)
 }
 
 func (s *PuzzleScreen) Keymap() input.Keymap {

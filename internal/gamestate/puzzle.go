@@ -31,6 +31,16 @@ func (gs *GameState) PuzzleOpened(x, y int) bool {
 	return id >= 0 && id < len(gs.VillainCaught) && gs.VillainCaught[id] != 0
 }
 
+// PuzzleCellID 回傳拼圖第 (x,y) 格的遮蓋物 id(對齊 C puzzle_map[y][x]):負值 = 神器
+// (artifact id = -id-1),非負 = 惡棍 id。供 UI 決定未掀開格畫惡棍臉還是神器圖示。
+// 界外回 0。
+func PuzzleCellID(x, y int) int {
+	if x < 0 || x >= PuzzleW || y < 0 || y >= PuzzleH {
+		return 0
+	}
+	return puzzleMap[y][x]
+}
+
 // PuzzleTile 回傳拼圖第 (x,y) 格對應的地圖 tile(權杖周邊 5×5,中心為權杖):
 // 地圖座標 = (scepter_x - PuzzleW/2 + x, scepter_y - PuzzleH/2 + y)。掀開後才有意義。
 func (gs *GameState) PuzzleTile(x, y int) byte {
