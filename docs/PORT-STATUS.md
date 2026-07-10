@@ -278,8 +278,10 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
 核心 + 進階系統(城鎮/城堡/棲地/戰鬥含施法奪城/寶箱/boat/傳送/路標/解散/換洲/
 神器/破關/魔法密室/小地圖/拼圖/週結算/開場)全數移植,遊戲可從新遊戲玩到通關。
 **剩餘皆屬打磨,非阻塞**:
-- sidebar 拼圖 piece 疊圖(素材疊圖;ArtifactFound 已建模)、view_puzzle 未掀開格的
-  惡棍臉/神器圖示(目前灰底)、minimap orb 迷霧(目前顯示整洲)。
+- ~~view_puzzle 未掀開格的惡棍臉/神器圖示(灰底)~~ ✅ 已完成(2026-07-10):
+  未掀開格改畫 `VillainFace(id)` / `viewItemSprite.DrawFrame` 神器圖示,掀開格走
+  `worldTileset.DrawTileAt`(見 `internal/screen/puzzle.go`)。
+- sidebar 拼圖 piece 疊圖(素材疊圖;ArtifactFound 已建模)、minimap orb 迷霧(目前顯示整洲)。
 - 精確 week_id / opt_* gameplay 旗標、read_signpost 以外的細節音效/動畫。
 - RNG 逐 seed parity(演算法忠實,但未從第一個 rand() 起對齊 C,見 NewGame 註記)。
 - Android 模擬器整合驗收新系統(桌面 ffmpeg 已驗關鍵畫面)。
@@ -295,3 +297,27 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
       略參差、偶有貼近/溢出框邊。**cosmetic、跨畫面一致、非 regression**。正解=寫個
       CJK 格寬感知的欄位對齊 helper(從框右緣算數字 x,不靠空格 padding),之後一次
       套用到所有這類畫面。
+
+## 美術主題切換(F8 / ☰)—— 進行中(2026-07-10)
+
+移植之外的加值功能:執行期切換整套美術主題(sprite+tileset+UI),沿用 C openkb 已抽出的美術。
+資料層(邏輯/數值/地圖)不切換,只換美術。詳見 `docs/theme-switching-plan.md`。
+
+### ✅ 已完成(commit 0e111a2 + a528480)
+- [x] `internal/screen/loadart.go`:`LoadArt(fsys, dir)` 統一美術載入(取代 main.go/mobile.go 重複段),
+      **先鋪 free 當底、再用主題覆蓋** → 版權主題缺的 UI 小件自動用 free。
+- [x] ThemeManager:`InitThemes(fsys, order)` 過濾實際內建模組(該 dir 有 tileseta.png)、`CycleTheme`、
+      `resolveThemes`(純函式)、`ActiveTheme`/`AvailableThemes`;`loadart_test.go` 單測(xvfb 全過)。
+- [x] `render.LoadTilesetFS(fsys, dir)` 加 dir 參數;main.go/mobile.go 改用 `InitThemes([dos,genesis,amiga,free])`。
+- [x] `app/game.go` `handleSystem` 攔 F8(ActThemeCycle)→ `CycleTheme`,鍵盤+觸控兩路。
+- [x] `.gitignore` 擋 `internal/embedded/data/{dos,genesis,amiga,fmtowns}/`(版權美術本機 build 才有)。
+- [x] **Amiga 主題接上並實測**:copy `openkb-code/qa-amiga/all/*.png`→`data/amiga/`;桌面 Xvfb 截圖
+      確認 Amiga tileset/sprite 正確渲染、free 缺件回退正常。目前 dos/genesis 未抽 → 預設暫落 amiga。
+
+### ⬜ 剩餘
+- [ ] **DOS 主題(讓 DOS 當預設)**:用 C `kbview`(src/tools/kbview.c,SDL_SavePNG)dump
+      `dos-orig/256.CC` 資源 → `data/dos/*.png`(free 版面)。tileset 先、再 sprite/UI。抽好即為預設。
+- [ ] **Genesis 主題**:同法 dump `data/genesis/`(C 版 MD_Resolve 僅 troop/villain/world,其餘回退 free)。
+- [ ] **Android ☰ 觸控入口**:F8 觸控不可達 → 右上 ☰ 系統選單(`Keymap.System`);順修 worldmap
+      觸控字母列出界(拼圖 p 按鈕觸控不可達)。
+- [ ] 切換 toast 提示 +（選用）主題設定持久化。

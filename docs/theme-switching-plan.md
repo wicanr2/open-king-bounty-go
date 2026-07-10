@@ -67,33 +67,37 @@ screen(或 app)層:
 - **Android(觸控)**:實作右上 **☰ 系統選單**——`Keymap.System` 填入 `[ActThemeCycle, ActMusicToggle, ActQuitSave]`,`input.TouchLayout` 在右上角放一顆 ☰ 熱區,點開列出這些系統項。主題切換就從這裡進。
   - 順帶解決另一個實機發現的缺陷:worldmap 觸控字母列 `x=82+i*32` 在第 8 顆就出界,**拼圖(p)按鈕觸控不可達**——系統/次要動作移進 ☰ 可一併釋放底列空間。
 
-## 5. 版權主題的抽取管線(DOS / FM Towns)— 最大工作量
+## 5. 各主題原始資源位置與抽取狀態(已確認 2026-07-10)
 
-**抽取面積**:free/ 有 **63 個 PNG**。整套美術主題要每張都有對應品 → DOS 與 FM Towns **各約 63 張、合計 ~126 張**。
-分兩類:
-- **tileset 類**(tileseta/b/comtiles/view/select 等圖集):固定格點,可程式化切割 dump。
-- **sprite 類**(cursor/各兵種/各惡棍臉/職業立繪/棲地背景/title/logo/endpic…):數量多、尺寸各異。
+C 版 openkb(`openkb-code/`)四主題(free/DOS/Genesis/Amiga)**執行期直接解碼原版**;Go port 需**個別 PNG**。
+原始資源與已 dump 產物位置(皆在 `openkb-code/`,gitignore):
 
-做法:**用 C openkb 當抽取 oracle**(kbres.c 已能讀原版 EGA / FM Towns 資源)。指向 `dos-orig/kings-bounty/KB.EXE`
-與 `fmtowns-cd/`,把各資源 render 成 free/ 同名 PNG(同尺寸/同 frame 佈局),產物落在 gitignore 的
-`internal/embedded/data/dos/`、`.../fmtowns/`。
+| 主題 | 原始資源 | C 解碼器 | 已 dump 產物 | Go 用個別 PNG |
+|---|---|---|---|---|
+| **Amiga** | `amiga-orig/`(unpack GAME 散檔) | `src/lib/amiga-data.c` | ✅ `qa-amiga/all/*.png`(62 張,`tools/amiga_batch.py`+`amiga_decode.py`) | ✅ **已接上**(copy 進 `data/amiga/`) |
+| **DOS** | `dos-orig/kings-bounty/256.CC`+`416.CC`+`KB.EXE`(雜湊資源容器) | `DOS_Resolve`(free-data/kbres.c) | 部分:`qa-spr/{troop,villain,portrait}_dos.bmp`、`qa-themes/tiles_dos.bmp`/`iso_dos.bmp`(長條合成,非個別) | ⬜ 待 dump |
+| **Genesis** | `genesis-orig/kb.bin`(Sega ROM) | `src/lib/md-rom.c`(MD_Resolve;**僅 troop/villain/world 完成**,tile/UI/cursor/select/title 仍回退 free) | `qa-md/`、`qa-spr/md_*` | ⬜ 待 dump(且本身不完整) |
 
-- 平行化:抽取是大量機械工作,可用 subagent fan-out(見 rule 45)分批抽 sprite,逐張目視對照 DOSBox / FM Towns 原版。
-- 漸進上線:§3.0 缺檔 best-effort → 只要抽好一部分就能先切換看到(缺的 asset 暫用 free 或 log 跳過)。
-- build 整合:build 前若 `data/dos` 存在就 embed;不存在則該主題自動缺席(ThemeManager 依 tileseta.png 偵測)。
-- ⚠ 版權:`data/dos`、`data/fmtowns` 一律 gitignore;公開 repo 與對外散布的 APK 不得含。個人 build 才內建。
+**關鍵**:DOS/Genesis 在 C 已能解碼(長條 bmp 為證),**不必從零逆向**。產個別 PNG 的兩條路:
+1. **C `kbview` 逐資源 dump**(`src/tools/kbview.c` 有 `SDL_SavePNG`):建好 kbview,對 DOS 模組每個 free 同名資源 dump 成 PNG(free 版面),放 `internal/embedded/data/dos/`。這是最忠實、最省的「沿用」。
+2. **切既有長條 bmp**:`tiles_dos.bmp`→tileseta/b、`troop_dos.bmp`→各兵種——但長條未涵蓋全部 63 asset(UI/背景/title 等缺),仍需路 1 補齊。
 
-## 6. 分階段
+- 漸進上線:§3.0 free 底層回退 → DOS 只要抽好 tileset+主要 sprite 就能先切換看到,缺件自動用 free。
+- build 整合:build 前 `data/<theme>` 存在就 embed(`//go:embed all:data`);不存在則 ThemeManager 依 tileseta.png 偵測後自動缺席。
+- ⚠ 版權:`internal/embedded/data/{dos,genesis,amiga,fmtowns}/` 已 gitignore;公開 repo 與對外 APK 不得含,個人 build 才內建。
 
-- **P1(keystone,零版權、可先驗)**:§3.0 `LoadArt(fsys, dir)` 統一重構 + ThemeManager + F8 消費 + ☰ 觸控選單。
-  用 free +（暫時複製一份調色的 `free2`）證明「執行期整套換」端到端可行。單測涵蓋 Cycle / 缺目錄過濾 / 預設選擇。
-- **P2**:DOS EGA 抽取管線(tileset 類先,~10 張圖集)→ 內建 → 設為預設,world/combat 目視對照 DOSBox。
-- **P3**:DOS EGA sprite 類抽完(兵種/惡棍/立繪/UI,~50 張,subagent fan-out)。
-- **P4**:FM Towns 抽取(tileset + sprite)。
-- **P5**:設定持久化 + toast + 文件 + 對外 build 排除版權目錄的把關。
+## 6. 分階段(狀態)
+
+- **P1 keystone**:✅ **完成**(commit `0e111a2`+`a528480`)。`LoadArt(fsys, dir)` 統一美術載入(先 free 底再覆蓋)+ ThemeManager(`InitThemes`/`CycleTheme`/`resolveThemes`)+ `app/game.go` 攔 F8。單測 `loadart_test.go`(過濾/預設/循環)xvfb 全過。
+- **Amiga 主題**:✅ **完成並實測**。copy `qa-amiga/all/*.png`→`data/amiga/`;桌面 Xvfb 截圖確認 tileset/sprite 正確、free 缺件回退正常。目前 dos/genesis 未抽 → 預設暫落 amiga。
+- **P2 DOS(讓 DOS 當預設,下一步)**:用 C `kbview` dump DOS 個別 PNG → `data/dos/`(§5 路 1)。tileset 先(world/combat 立即可見),再 sprite/UI。DOSBox 目視對照。抽好即成預設(偏好序第一)。
+- **P3 Genesis**:同法 dump `data/genesis/`(注意 C 版 MD_Resolve 僅 troop/villain/world,tile/UI 本就回退 free → Go 端也接受部分主題)。
+- **P4 Android ☰ 觸控入口**:F8 觸控不可達 → 右上 ☰ 系統選單(`Keymap.System`=[ActThemeCycle,…]),手機才點得到切換。順修 worldmap 字母列出界(拼圖 p 觸控不可達)。
+- **P5**:切換 toast +（選用）設定持久化 + 文件 + 對外 build 排除版權目錄把關。
 
 ## 7. 已定案 / 註記
 
 - 範圍:**整套美術**(art-only module;資料層不切換)。已定案,見開頭。
+- 主題集 = C openkb 實際四主題 **free / DOS / Genesis / Amiga**(先前誤植 FM Towns;FM Towns 在 C 只有音樂、圖形未完整 loader)。
 - `tilesalt`(9 tile)**不**當可切換主題,維持原用途(神器圖示)。
-- 實機附帶發現(P1 一併處理):worldmap 觸控字母列出界 → **拼圖(p)按鈕觸控不可達**,系統/次要動作移進 ☰ 釋放空間。
+- Genesis 主題**本身不完整**(C 版 tile/UI 仍回退 free),Go 端沿用此現況(free 底層回退剛好承接)。
