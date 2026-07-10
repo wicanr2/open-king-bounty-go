@@ -237,6 +237,7 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 	}
 	lastX, lastY := s.gs.X, s.gs.Y
 	s.gs.X, s.gs.Y = nx, ny
+	s.gs.Reveal(cont, nx, ny) // 走到新格即揭示周邊(fog-of-war,供 view_minimap)
 	if boarding {
 		s.gs.Mount = gamestate.KBMountSail
 	}

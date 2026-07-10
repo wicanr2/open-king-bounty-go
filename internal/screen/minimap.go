@@ -14,8 +14,8 @@ import (
 // MinimapScreen 對齊 C view_minimap(game.c:1533):把目前所在洲的整張 64×64 地圖縮成
 // 小色塊總覽,玩家位置以亮點標示。由世界地圖按 'm' 開啟(對齊 C KEY_ACT(VIEW_MAP))。
 //
-// 簡化:C 版用 COL_MINIMAP 調色盤 + orb 揭示範圍;本移植用既有 tileColor 上色、直接
-// 顯示整洲(orb 系統另記於 OrbFound,尚未做「未取得 orb 則只顯示已探索」的迷霧)。
+// 上色用既有 tileColor;迷霧對齊 C view_minimap(game.c:1613):取得該洲魔法寶珠(OrbFound)
+// 則全顯示,否則只顯示已探索格(gs.Fog,玩家走過即揭示 5×5),未探索畫黑。
 type MinimapScreen struct {
 	gs     *gamestate.GameState
 	assets *kbdata.Assets
@@ -48,11 +48,18 @@ func (s *MinimapScreen) Draw(dst *ebiten.Image) {
 	blockW := float32(areaW) / float32(n)
 	blockH := float32(areaH) / float32(n)
 	cont := s.gs.Continent
+	// 對齊 C view_minimap(game.c:1613):取得該洲魔法寶珠則全顯示,否則只顯示已探索格(fog);
+	// 未探索格畫黑(迷霧)。
+	orb := s.gs.OrbFound[cont] != 0
 	for y := 0; y < n; y++ {
 		for x := 0; x < n; x++ {
-			tile := s.gs.WorldMap.Tile(cont, x, y)
 			px := float32(mapX) + float32(x)*blockW
 			py := float32(mapY) + float32(n-1-y)*blockH // Y 翻轉
+			if !orb && !s.gs.Fog[cont][y][x] {
+				vector.DrawFilledRect(dst, px, py, blockW+1, blockH+1, color.RGBA{0, 0, 0, 255}, false)
+				continue
+			}
+			tile := s.gs.WorldMap.Tile(cont, x, y)
 			vector.DrawFilledRect(dst, px, py, blockW+1, blockH+1, tileColor(tile), false)
 		}
 	}

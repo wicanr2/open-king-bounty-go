@@ -106,6 +106,9 @@ type GameState struct {
 
 	// OrbFound[cont] = 是否已在該洲取得魔法寶珠(揭示小地圖),對應 C game->orb_found。
 	OrbFound [kbdata.MaxContinents]byte
+	// Fog[cont][y][x] = 該格是否已探索(對應 C game->fog):玩家走過即揭示周邊 5×5 視窗;
+	// view_minimap 在未取得該洲 orb 時只顯示已探索格(取得 orb 則全顯示,見 minimap.go)。
+	Fog [kbdata.MaxContinents][kbdata.LevelH][kbdata.LevelW]bool
 	// OrbCoords[cont] = [x,y](尋物法球位置),對應 C game->orb_coords[MAX_CONTINENTS][2]。
 	// 目前只記座標,尚未接 view_minimap/orb 撿拾流程(見 docs/PORT-STATUS.md B/C 段)。
 	OrbCoords [kbdata.MaxContinents][2]int
