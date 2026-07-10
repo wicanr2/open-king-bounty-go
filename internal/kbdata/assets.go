@@ -118,6 +118,11 @@ type Assets struct {
 	// %s 佔位:第一個是最後現身大陸洲名、第二個是城堡名,呼叫端 fmt.Sprintf 代入)。
 	// 缺檔該筆維持空字串,呼叫端須 nil/空字串安全。
 	VillainDescs [MaxVillains]string
+
+	// Signs 是路標文字清單,對應 C STRL_SIGNS(free-data.c:1099):讀 signs.txt 後用
+	// 「每隔一個換行當分隔」的規則切成多則(見 parseSigns)。read_signpost 依路標在
+	// 地圖上的掃描序當索引取用。缺檔為 nil,呼叫端須越界安全。
+	Signs []string
 }
 
 // freeIniNames 是 Load 會嘗試載入的 free 資料清單(缺檔不致命)。
@@ -171,7 +176,38 @@ func LoadFS(fsys fs.FS) (*Assets, error) {
 		}
 	}
 	loadVillainDescs(fsys, a)
+	if b, err := fs.ReadFile(fsys, "free/signs.txt"); err == nil {
+		a.Signs = parseSigns(string(b))
+	}
 	return a, nil
+}
+
+// parseSigns 把 signs.txt 切成多則路標,逐一對齊 C STRL_SIGNS(free-data.c:1099)的
+// 「toggle」規則:掃過每個 '\n',以 0/1 交替——遇到偶數個(j==0)的換行保留成則內
+// 換行,遇到奇數個(j==1)的換行當作「則」的分隔。故相鄰兩則由一個「空行」隔開,
+// 但則內可含單一換行(多行路標)。此規則脆弱但忠實照抄 C。
+func parseSigns(data string) []string {
+	var signs []string
+	var cur []byte
+	j := 0
+	for i := 0; i < len(data); i++ {
+		ch := data[i]
+		if ch == '\n' {
+			if j == 1 {
+				signs = append(signs, string(cur))
+				cur = cur[:0]
+			} else {
+				cur = append(cur, '\n')
+			}
+			j = 1 - j
+			continue
+		}
+		cur = append(cur, ch)
+	}
+	if len(cur) > 0 {
+		signs = append(signs, string(cur))
+	}
+	return signs
 }
 
 // loadVillainDescs 讀 17 個惡棍的 STRL_VDESCS 描述文字檔(見 Assets.VillainDescs

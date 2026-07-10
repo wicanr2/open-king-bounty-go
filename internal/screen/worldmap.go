@@ -262,6 +262,10 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		// 戰後回寫:存活敵軍寫回 FoeTroops/Numbers,戰勝清 (nx,ny) tile(對齊 C run_combat mode 0)。
 		return Push(NewCombatScreenFoe(s.gs, s.assets, foe, cont, foeID, nx, ny))
 	}
+	// 踩到路標 → 讀告示(對齊 C read_signpost,game.c:3095):疊上 SignpostScreen。
+	if tile == kbdata.TileSignpost {
+		return Push(NewSignpostScreen(s.gs, s.assets))
+	}
 	// 踩到寶箱 → 開箱(對齊 C take_chest,game.c:3167):判定海圖/寶珠/寶藏並套用,
 	// 疊上 ChestScreen 顯示結果(金幣類讓玩家選 A/B)。TakeChest 內已清掉寶箱 tile。
 	if tile == kbdata.TileChest {
