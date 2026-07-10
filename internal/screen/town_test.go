@@ -72,9 +72,9 @@ func TestTownScreen_LetterC_SwitchesToInfo(t *testing.T) {
 		t.Errorf("按 'c' 後 sel = %d, want 2", s.sel)
 	}
 
-	// B(租船)/E(攻城)仍是佔位 stub(需 boat/siege 世界狀態);A 已接契約、
+	// E(攻城)仍是佔位 stub(需 siege 世界狀態);A 已接契約、B 已接租船、
 	// C 情報、D 學法術,不在此 stub 迴圈。
-	for i, r := range []rune{'b', 'e'} {
+	for i, r := range []rune{'e'} {
 		s2 := newTestTownScreen(t)
 		s2.Update(input.Letter(r))
 		if s2.mode != townModeStub {
@@ -83,6 +83,31 @@ func TestTownScreen_LetterC_SwitchesToInfo(t *testing.T) {
 		if s2.stub != townLetters[indexOfRune(r)].Label {
 			t.Errorf("按 %q 後 stub = %q, want %q", r, s2.stub, townLetters[indexOfRune(r)].Label)
 		}
+	}
+}
+
+// TestTownScreen_LetterB_RentsBoat 驗證 B(租船)接 gamestate.RentOrCancelBoat:
+// 起手未租船 → 扣租金、gs.Boat 設為該鎮所在洲、船停靠 town.BoatX/Y;再按一次 → 取消。
+func TestTownScreen_LetterB_RentsBoat(t *testing.T) {
+	s := newTestTownScreen(t)
+	s.gs.Gold = 10000 // 確保租得起
+	goldBefore := s.gs.Gold
+
+	s.Update(input.Letter('b'))
+	if !s.gs.HasBoat() {
+		t.Fatalf("按 B 後應已租船(HasBoat=true)")
+	}
+	if s.gs.Gold != goldBefore-s.gs.BoatCost() {
+		t.Errorf("租船未扣費:gold %d→%d(租金 %d)", goldBefore, s.gs.Gold, s.gs.BoatCost())
+	}
+	if int(s.gs.Boat) != s.town.Continent {
+		t.Errorf("gs.Boat 應為該鎮所在洲 %d,got %d", s.town.Continent, s.gs.Boat)
+	}
+
+	// 再按一次 → 取消租船(未乘船,可直接取消)。
+	s.Update(input.Letter('b'))
+	if s.gs.HasBoat() {
+		t.Errorf("再按 B 應取消租船(HasBoat=false)")
 	}
 }
 

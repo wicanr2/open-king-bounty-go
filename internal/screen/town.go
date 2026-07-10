@@ -123,6 +123,8 @@ func (s *TownScreen) activate(idx int) Transition {
 	switch townLetters[idx].Rune {
 	case 'a':
 		return s.takeContract()
+	case 'b':
+		s.rentBoat()
 	case 'c':
 		s.gatherLines = s.gatherInformation()
 		s.mode = townModeInfo
@@ -153,6 +155,28 @@ func (s *TownScreen) takeContract() Transition {
 	s.gs.LastContract = villainID
 	s.gs.Contract = villainID
 	return Push(NewViewContractScreen(s.gs, s.assets))
+}
+
+// rentBoat 對齊 C visit_town key==2(game.c:2775-2800):租船或取消租船。
+// 依 gamestate.RentOrCancelBoat 的結果切到對應提示;成功租船/取消後選單 B 行文字會
+// 跟著變(menuLines 讀 gs.HasBoat)。
+func (s *TownScreen) rentBoat() {
+	if s.gs == nil {
+		s.mode = townModeStub
+		s.stub = townLetters[1].Label
+		return
+	}
+	s.mode = townModeLearnResult // 沿用「訊息保留」子畫面顯示結果一行
+	switch s.gs.RentOrCancelBoat(s.town) {
+	case gamestate.RentNotEnoughGold:
+		s.learnMsg = []string{"你的金幣不足！"}
+	case gamestate.RentMustDisembark:
+		s.learnMsg = []string{"請先離開船隻"}
+	case gamestate.RentCancelled:
+		s.learnMsg = []string{"已取消租船。"}
+	default: // RentOK
+		s.learnMsg = []string{"船隻已備妥,停靠在鎮外水域。"}
+	}
 }
 
 // learnSpell 對齊 C visit_town() key==4 分支(game.c:2807-2827):呼叫
@@ -231,14 +255,21 @@ func (s *TownScreen) drawLocation(dst *ebiten.Image, frame int) {
 // costSiegeWeapons 常數註解。
 func (s *TownScreen) menuLines() []string {
 	gold := 0
+	boatLine := fmt.Sprintf("B) 租船 (%d 週) ", costBoatExpensive)
 	if s.gs != nil {
 		gold = s.gs.Gold
+		// 對齊 C:已租船顯示「取消租船」,未租船顯示租金(gs.BoatCost)。
+		if s.gs.HasBoat() {
+			boatLine = "B) 取消租船"
+		} else {
+			boatLine = fmt.Sprintf("B) 租船 (%d 週) ", s.gs.BoatCost())
+		}
 	}
 	return []string{
 		fmt.Sprintf("%s 鄉鎮", s.town.Name),
 		fmt.Sprintf("                    GP=%dK", gold/1000),
 		"A) 領取新契約",
-		fmt.Sprintf("B) 租船 (%d 週) ", costBoatExpensive),
+		boatLine,
 		"C) 蒐集情報",
 		fmt.Sprintf("D) 學習 %s (%d)", s.spell.Name, s.spell.Gold),
 		fmt.Sprintf("E) 購買攻城武器 (%d)", costSiegeWeapons),

@@ -10,11 +10,12 @@ const maxTowns = 26
 // visit_town():以 continent/x/y 掃描 town_coords[] 找到 id,town_names[id] 是
 // 鄉鎮顯示名,town_spell[id] 是該鎮教的法術索引)。
 type Town struct {
-	ID        int
-	Name      string // ini `name`,對應 C town_names[id]
-	Continent int    // ini `continent`,對應 C town_coords[i][0]
-	X, Y      int    // ini `x`/`y`,對應 C town_coords[i][1..2]
-	SpellID   int    // ini `spell`,對應 C game->town_spell[id](該鎮教的法術索引,查 spells.ini)
+	ID           int
+	Name         string // ini `name`,對應 C town_names[id]
+	Continent    int    // ini `continent`,對應 C town_coords[i][0]
+	X, Y         int    // ini `x`/`y`,對應 C town_coords[i][1..2]
+	SpellID      int    // ini `spell`,對應 C game->town_spell[id](該鎮教的法術索引,查 spells.ini)
+	BoatX, BoatY int    // ini `boat_x`/`boat_y`,對應 C boat_coords[i][1..2](租船時船隻停靠點,DAT_BOATX/Y 覆寫)
 }
 
 // LoadTowns 從 a.Strings["towns"](towns.ini 解析結果)建出 26 個 Town。
@@ -43,6 +44,8 @@ func LoadTowns(a *kbdata.Assets) []Town {
 		t.X = sec.IntDefault("x", 0)
 		t.Y = sec.IntDefault("y", 0)
 		t.SpellID = sec.IntDefault("spell", 0)
+		t.BoatX = sec.IntDefault("boat_x", 0)
+		t.BoatY = sec.IntDefault("boat_y", 0)
 	}
 	return towns
 }

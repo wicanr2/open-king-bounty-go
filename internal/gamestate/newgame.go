@@ -71,6 +71,10 @@ func NewGame(a *kbdata.Assets, name string, class int, seed uint32) *GameState {
 	} else {
 		gs.Continent, gs.X, gs.Y = 0, 15, 8
 	}
+	// 座騎/船隻起手值(對齊 C spawn_game play.c:407-409):騎乘、未租船、僅家鄉洲可航行。
+	gs.Mount = KBMountRide
+	gs.Boat = noBoat
+	gs.ContinentFound[gs.Continent] = 1
 
 	// Contract 起手值,對齊 C spawn_game(play.c:418-425)。不消耗 rand,
 	// 順序上放在這裡只是照抄 C 原始程式碼位置,對結果無影響。

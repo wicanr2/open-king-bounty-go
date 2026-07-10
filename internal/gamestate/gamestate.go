@@ -44,6 +44,14 @@ type GameState struct {
 	Continent int
 	X, Y      int
 
+	// 船隻 / 座騎 / 已探索大陸(對齊 C game->boat/boat_x/boat_y/mount/continent_found)。
+	// Boat = 船隻所在洲(0xFF = 未租船);Mount = KBMount*(RIDE/SAIL/FLY);
+	// ContinentFound[c] = 是否可航行至該洲(navigate_continent 目的地清單用,起手僅家鄉洲)。
+	Boat         byte
+	BoatX, BoatY int
+	Mount        int
+	ContinentFound [kbdata.MaxContinents]byte
+
 	// TownSpell 是「第 N 鎮教哪個法術」的 per-save 隨機分配,對應 C 版
 	// byte town_spell[MAX_TOWNS](bounty.h:128),由 salt_spells(play.c:336)在
 	// NewGame 建遊戲時填好(見 townspell.go)。索引與 gamestate.Town.ID(town_coords[]
