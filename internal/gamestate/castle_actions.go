@@ -5,9 +5,10 @@ import "github.com/wicanr2/open-king-bounty-go/internal/kbdata"
 // 城堡佔領者(castle_owner)語意常數,對齊 C bounty.h:34-37。
 // castleOwnerMonsters(0x7F)已在 castlegen.go 定義,這裡補其餘三個。
 const (
-	KBCastlePlayer  = 0xFF // 玩家佔領(bounty.h:35 KBCASTLE_PLAYER)
-	KBCastleKnown   = 0x40 // 「已知統治者」旗標,OR 進 owner 高位(bounty.h:34 KBCASTLE_KNOWN)
-	KBCastleVillain = 0x1F // 取 villain id 的低 5 位遮罩(bounty.h:37 KBCASTLE_VILLAIN)
+	KBCastlePlayer   = 0xFF // 玩家佔領(bounty.h:35 KBCASTLE_PLAYER)
+	KBCastleMonsters = 0x7F // 怪物佔領/無惡棍(bounty.h:36 KBCASTLE_MONSTERS,= 未匯出的 castleOwnerMonsters)
+	KBCastleKnown    = 0x40 // 「已知統治者」旗標,OR 進 owner 高位(bounty.h:34 KBCASTLE_KNOWN)
+	KBCastleVillain  = 0x1F // 取 villain id 的低 5 位遮罩(bounty.h:37 KBCASTLE_VILLAIN)
 )
 
 // HomeCastleID 是家鄉城堡的特殊 id,對齊 C visit_castle 用 MAX_CASTLES 當 home id

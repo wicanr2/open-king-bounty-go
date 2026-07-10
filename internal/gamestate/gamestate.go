@@ -102,6 +102,11 @@ type GameState struct {
 	// 清單只列已造訪城堡。
 	CastleVisited [kbdata.MaxCastles]byte
 
+	// VillainCaught[id] = 玩家是否已捕獲該惡棍(打贏其懸賞戰後設 1),對應 C
+	// game->villain_caught[MAX_VILLAINS](bounty.h:119)。audience_with_king 用來算
+	// 「還需捕獲幾名才能晉升」;晉升條件 classes[class][rank+1].villains_needed。
+	VillainCaught [kbdata.MaxVillains]byte
+
 	// Contract 系列,對應 C spawn_game 起手值(play.c:418-425)。
 	Contract      byte    // 目前接的懸賞契約 villain id;0xFF = 尚未接(C: byte contract)
 	LastContract  byte    // C: byte last_contract,起手固定 0x04

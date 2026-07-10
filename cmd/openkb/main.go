@@ -28,6 +28,12 @@ var (
 	startViewChar     = flag.Bool("startviewchar", false, "debug:直接進角色檢視畫面(截圖驗證用)")
 	startViewContract = flag.Bool("startviewcontract", false, "debug:直接進懸賞契約檢視畫面(截圖驗證用)")
 	contractVillain   = flag.Int("contractvillain", -1, "debug:配合 -startviewcontract,>=0 直接把 gs.Contract 設為該惡棍 id(0-16;起手預設 0xFF=無契約)")
+	startCastleHome   = flag.Bool("startcastlehome", false, "debug:直接進家鄉城堡(王座廳選單)畫面")
+	startCastleOwn    = flag.Bool("startcastleown", false, "debug:直接進自家城堡(駐防/撤離)畫面;castle id 由 -castleid 指定")
+	startCastleSiege  = flag.Bool("startcastlesiege", false, "debug:直接進敵方城堡(圍攻詢問)畫面;castle id 由 -castleid 指定")
+	startRecruitSol   = flag.Bool("startrecruitsoldiers", false, "debug:直接進家鄉招兵畫面")
+	startAudience     = flag.Bool("startaudience", false, "debug:直接進謁見國王畫面")
+	castleID          = flag.Int("castleid", 0, "debug:配合 -startcastleown/-startcastlesiege,指定城堡 id(0-25)")
 	recruitRtype      = flag.Int("rtype", 0, "debug:配合 -startrecruit,棲地類型(0=平原 1=森林 2=山丘 3=地下城)")
 	recruitTroop      = flag.Int("recruittroop", 0, "debug:配合 -startrecruit,招募兵種 TroopID")
 	worldSeed         = flag.Uint("seed", uint(gamestate.DefaultWorldSeed), "debug:配合 -starttown/-startclass,指定 salt_spells 等世界生成用的 RNG seed")
@@ -41,6 +47,32 @@ func rootScreen(a *kbdata.Assets) screen.Screen {
 	if *startTown {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
 		return screen.NewTownScreen(gs, a, *townID)
+	}
+	if *startCastleHome {
+		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
+		return screen.NewCastleHomeScreen(gs, a)
+	}
+	if *startRecruitSol {
+		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
+		return screen.NewCastleHomeScreen(gs, a) // 家鄉招兵須從王座廳 A) 進入;此旗標保留給流程截圖
+	}
+	if *startAudience {
+		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
+		return screen.NewAudienceScreen(gs, a)
+	}
+	if *startCastleOwn {
+		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
+		// debug:把指定城堡設為玩家所有並塞些守軍,讓「撤離/駐防」畫面有內容可看。
+		if *castleID >= 0 && *castleID < kbdata.MaxCastles {
+			gs.CastleOwner[*castleID] = gamestate.KBCastlePlayer
+			gs.CastleTroops[*castleID] = [5]int{0, 3, 0xFF, 0xFF, 0xFF}
+			gs.CastleNumbers[*castleID] = [5]int{20, 8, 0, 0, 0}
+		}
+		return screen.NewCastleOwnScreen(gs, a, *castleID)
+	}
+	if *startCastleSiege {
+		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
+		return screen.NewCastleSiegeScreen(gs, a, *castleID)
 	}
 	if *startRecruit {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))

@@ -128,3 +128,26 @@ func drawBottomFrame(dst *ebiten.Image, assets *kbdata.Assets, lines []string) {
 		render.DrawText(dst, assets.Font, line, bottomTextX, bottomHeaderY+i*render.CJKCell, color.White)
 	}
 }
+
+// drawLocationBg 畫地點背景 + 迎賓兵種,對齊 C draw_location(loc_id, troop_id, frame)
+// (game.c:1086):背景整張貼在 (mapX,mapY),兵種 sprite 貼在背景左緣往右一個幀寬、
+// 底部對齊背景底,C 版 GR_TROOP 用 flip=1 故用 DrawFrameFlipped。與 recruit.go/town.go
+// 的 drawLocation 同幾何,抽成共用 helper 供城堡系列畫面(家鄉招兵/謁見)重用。
+// troopID<0 時只畫背景(無迎賓兵種)。
+func drawLocationBg(dst *ebiten.Image, bg *ebiten.Image, troopID, frame int) {
+	if bg == nil {
+		return
+	}
+	render.DrawTile(dst, bg, mapX, mapY)
+	if troopID < 0 {
+		return
+	}
+	sp := troopSpriteFor(troopID)
+	if sp == nil {
+		return
+	}
+	bgH := bg.Bounds().Dy()
+	tx := mapX + sp.FrameW*1
+	ty := mapY + bgH - sp.FrameH
+	sp.DrawFrameFlipped(dst, frame, tx, ty)
+}

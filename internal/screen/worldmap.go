@@ -203,6 +203,26 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		}
 		return Push(NewTownScreen(s.gs, s.assets, townID))
 	}
+	// 踩到城堡 → 依 CastleAt 判定 home/your/enemy 分派(對齊 C visit_castle,
+	// game.c:2567):家鄉城堡 → 招兵/謁見選單;自家城堡 → 駐防/撤離;敵方城堡 →
+	// 圍攻詢問。進 your/enemy 時記下 castle_visited(供 select_gate 傳送清單)。
+	if tile == kbdata.TileCastle || kbdata.IsCastle(tile) {
+		kind, id := s.gs.CastleAt(s.assets, s.cont, nx, ny)
+		switch kind {
+		case gamestate.CastleHome:
+			return Push(NewCastleHomeScreen(s.gs, s.assets))
+		case gamestate.CastleYours:
+			s.gs.CastleVisited[id] = 1
+			return Push(NewCastleOwnScreen(s.gs, s.assets, id))
+		case gamestate.CastleEnemy:
+			s.gs.CastleVisited[id] = 1
+			return Push(NewCastleSiegeScreen(s.gs, s.assets, id))
+		default:
+			// CastleAt 找不到城堡(座標未對上 land.ini/castles.ini)——對齊 C
+			// KB_errlog 後 return,不進任何城堡畫面,留在原地。
+			return Stay()
+		}
+	}
 	// 踩到敵人 → 進戰鬥(疊上 CombatScreen,結束後回地圖),敵方部隊取自世界狀態
 	// gs.FoeTroops/FoeNumbers(對齊 C attack_foe() 依座標查 foe id 再讀 foe_troops/numbers)。
 	if tile == kbdata.TileFoe {
