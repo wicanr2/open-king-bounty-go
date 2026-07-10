@@ -64,6 +64,14 @@ func NewGame(a *kbdata.Assets, name string, class int, seed uint32) *GameState {
 	gs.acceptRank(a)
 	gs.Leadership = gs.BaseLeadership
 
+	// 玩家起始位置(對齊 C spawn_game:special_coords[SP_HOME],y 減 2)。缺 land 資料
+	// (純邏輯測試)時退回 land.ini special0 的字面值 (0,15,10)。
+	if hc, hx, hy, ok := HomeCastleCoords(a); ok {
+		gs.Continent, gs.X, gs.Y = hc, hx, hy-2
+	} else {
+		gs.Continent, gs.X, gs.Y = 0, 15, 8
+	}
+
 	// Contract 起手值,對齊 C spawn_game(play.c:418-425)。不消耗 rand,
 	// 順序上放在這裡只是照抄 C 原始程式碼位置,對結果無影響。
 	gs.Contract = 0xFF

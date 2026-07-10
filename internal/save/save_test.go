@@ -20,6 +20,8 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 
 	gs := gamestate.NewGame(a, "測試騎士", 0, gamestate.DefaultWorldSeed)
 	gs.Week = 3 // 讓 round-trip 也覆蓋非起手值(避免欄位剛好等於零值而測不出漏傳)
+	// 玩家位置移入 GameState 後應隨存檔持久(過去存在 WorldMapScreen,讀檔會遺失)。
+	gs.Continent, gs.X, gs.Y = 2, 7, 19
 
 	path := filepath.Join(t.TempDir(), "slot0.json")
 
@@ -61,6 +63,10 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	}
 	if got.KnowsMagic != gs.KnowsMagic {
 		t.Errorf("KnowsMagic: got %v, want %v", got.KnowsMagic, gs.KnowsMagic)
+	}
+	if got.Continent != gs.Continent || got.X != gs.X || got.Y != gs.Y {
+		t.Errorf("位置未持久:got (cont=%d,x=%d,y=%d), want (%d,%d,%d)",
+			got.Continent, got.X, got.Y, gs.Continent, gs.X, gs.Y)
 	}
 	if got.Week != gs.Week {
 		t.Errorf("Week: got %d, want %d", got.Week, gs.Week)

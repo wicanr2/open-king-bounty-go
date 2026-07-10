@@ -36,6 +36,14 @@ type GameState struct {
 
 	Week int // 已過週數;end_week 每次遞增,用於「每 4 週補農夫」判定(C: week_id = passed_days/WEEK_DAYS)
 
+	// 玩家在世界地圖的位置(對齊 C game->continent/x/y)。過去這三個值只存在
+	// WorldMapScreen(cont/px/py),導致存讀檔遺失位置、戰敗無法傳送回家;移入
+	// GameState 後隨 encoding/json 自動持久,WorldMapScreen 改讀寫這裡。
+	// X/Y 與 C 同座標系(Y-flip 只在渲染);起手值由 NewGame 設為家鄉附近
+	// (special0 座標 y-2,對齊 spawn_game)。
+	Continent int
+	X, Y      int
+
 	// TownSpell 是「第 N 鎮教哪個法術」的 per-save 隨機分配,對應 C 版
 	// byte town_spell[MAX_TOWNS](bounty.h:128),由 salt_spells(play.c:336)在
 	// NewGame 建遊戲時填好(見 townspell.go)。索引與 gamestate.Town.ID(town_coords[]

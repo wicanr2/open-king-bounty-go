@@ -122,19 +122,16 @@ const worldMapDaysLeft = 600
 type WorldMapScreen struct {
 	gs     *gamestate.GameState
 	assets *kbdata.Assets
-	cont   int
-	px, py int    // 玩家在該洲的 tile 座標
 	msg    string // 存讀檔提示(「已存檔/已讀檔/無存檔」等),不計時,下次動作前持續顯示
 
 	drawTick int // Draw() 每次呼叫遞增(對齊 chrome.go drawSidebar 的 frame 節奏注解)
 }
 
-// NewWorldMapScreen 建立地圖畫面,玩家起點掃描該洲第一個草地格。
+// NewWorldMapScreen 建立地圖畫面。玩家位置(洲/座標)以 GameState 為準——新遊戲由
+// NewGame 設為家鄉起點,讀檔則沿用存檔中的位置,戰敗 temp_death 也已寫回 gs;本畫面
+// 只讀 gs.Continent/X/Y,不再自己維護一份座標,故存讀檔/傳送回家都自動正確。
 func NewWorldMapScreen(gs *gamestate.GameState, a *kbdata.Assets) *WorldMapScreen {
-	// 起點對齊 C spawn_game 的 home castle 座標(homeContinent/homeStartX/homeStartY),
-	// 不再用 findStart 的「第一格草地」佔位。
-	s := &WorldMapScreen{gs: gs, assets: a, cont: homeContinent, px: homeStartX, py: homeStartY}
-	return s
+	return &WorldMapScreen{gs: gs, assets: a}
 }
 
 // walkable 回報玩家能否踏上該 tile(水/深水/山阻擋;陸地與互動格可走)。
@@ -169,7 +166,8 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		}
 		return Stay()
 	}
-	nx, ny := s.px, s.py
+	cont := s.gs.Continent
+	nx, ny := s.gs.X, s.gs.Y
 	switch a.Kind {
 	case input.ActUp:
 		ny++ // Y 翻轉:向上 = 北 = 高 y(對齊 C 版螢幕座標)
@@ -187,17 +185,17 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 	if nx < 0 || ny < 0 || nx >= kbdata.LevelW || ny >= kbdata.LevelH {
 		return Stay()
 	}
-	tile := s.gs.WorldMap.Tile(s.cont, nx, ny)
+	tile := s.gs.WorldMap.Tile(cont, nx, ny)
 	if !walkable(tile) {
 		return Stay()
 	}
-	s.px, s.py = nx, ny
+	s.gs.X, s.gs.Y = nx, ny
 	// 踩到城鎮 → 進城(疊上 TownScreen,離開後回地圖)
 	if tile == kbdata.TileTown {
 		townID := 0
 		if s.assets != nil {
 			towns := gamestate.LoadTowns(s.assets)
-			if id := gamestate.FindTown(towns, s.cont, s.px, s.py); id >= 0 {
+			if id := gamestate.FindTown(towns, cont, nx, ny); id >= 0 {
 				townID = id
 			}
 		}
@@ -207,7 +205,7 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 	// game.c:2567):家鄉城堡 → 招兵/謁見選單;自家城堡 → 駐防/撤離;敵方城堡 →
 	// 圍攻詢問。進 your/enemy 時記下 castle_visited(供 select_gate 傳送清單)。
 	if tile == kbdata.TileCastle || kbdata.IsCastle(tile) {
-		kind, id := s.gs.CastleAt(s.assets, s.cont, nx, ny)
+		kind, id := s.gs.CastleAt(s.assets, cont, nx, ny)
 		switch kind {
 		case gamestate.CastleHome:
 			return Push(NewCastleHomeScreen(s.gs, s.assets))
@@ -226,10 +224,10 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 	// 踩到敵人 → 進戰鬥(疊上 CombatScreen,結束後回地圖),敵方部隊取自世界狀態
 	// gs.FoeTroops/FoeNumbers(對齊 C attack_foe() 依座標查 foe id 再讀 foe_troops/numbers)。
 	if tile == kbdata.TileFoe {
-		foeID := findFoeID(s.gs, s.cont, nx, ny)
-		foe := foeSquadsFrom(s.gs.FoeTroops[s.cont][foeID], s.gs.FoeNumbers[s.cont][foeID])
+		foeID := findFoeID(s.gs, cont, nx, ny)
+		foe := foeSquadsFrom(s.gs.FoeTroops[cont][foeID], s.gs.FoeNumbers[cont][foeID])
 		// 戰後回寫:存活敵軍寫回 FoeTroops/Numbers,戰勝清 (nx,ny) tile(對齊 C run_combat mode 0)。
-		return Push(NewCombatScreenFoe(s.gs, s.assets, foe, s.cont, foeID, nx, ny))
+		return Push(NewCombatScreenFoe(s.gs, s.assets, foe, cont, foeID, nx, ny))
 	}
 	// 踩到棲地 → 招兵(疊上 RecruitScreen,離開後回地圖)。rtype 對齊 C
 	// game.c:6915 visit_dwelling(game, m - TILE_DWELLING_1):TileDwelling1..4 依序
@@ -238,13 +236,13 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 	// gs.DwellingTroop/DwellingPopulation(真實世界狀態,取代舊佔位)。
 	if tile >= kbdata.TileDwelling1 && tile <= kbdata.TileDwelling4 {
 		rtype := int(tile - kbdata.TileDwelling1)
-		dwellingID := findDwellingID(s.gs, s.cont, nx, ny)
+		dwellingID := findDwellingID(s.gs, cont, nx, ny)
 		if dwellingID == -1 {
 			// 對齊 C `if (id == -1) return 0;`:理論上不該發生(tile 本身就是
 			// dwelling),防呆保留在原地不進招兵畫面。
 			return Stay()
 		}
-		return Push(NewRecruitScreen(s.gs, s.assets, s.cont, dwellingID, rtype))
+		return Push(NewRecruitScreen(s.gs, s.assets, cont, dwellingID, rtype))
 	}
 	return Stay()
 }
@@ -318,8 +316,8 @@ func (s *WorldMapScreen) Draw(dst *ebiten.Image) {
 	// 側欄接著蓋掉內部,四周留白就是黃色邊框,不必個別畫 4 條 FillRect。
 	dst.Fill(colorBorder)
 	// 5×5 viewport,玩家置中,Y 翻轉(對齊 C 版 draw_map:pos.y=(perim-1-j)*h+mapY)。
-	borderX := s.px - radii
-	borderY := s.py - radii
+	borderX := s.gs.X - radii
+	borderY := s.gs.Y - radii
 	for j := 0; j < perim; j++ {
 		for i := 0; i < perim; i++ {
 			mx, my := borderX+i, borderY+j
@@ -327,7 +325,7 @@ func (s *WorldMapScreen) Draw(dst *ebiten.Image) {
 			sy := mapY + (perim-1-j)*mapTileH
 			tile := byte(kbdata.TileDeepWater) // 界外 = 深水(對齊 C 邊界填色)
 			if mx >= 0 && my >= 0 && mx < kbdata.LevelW && my < kbdata.LevelH {
-				tile = s.gs.WorldMap.Tile(s.cont, mx, my)
+				tile = s.gs.WorldMap.Tile(s.gs.Continent, mx, my)
 			}
 			if worldTileset != nil {
 				worldTileset.DrawTileAt(dst, tile, sx, sy)

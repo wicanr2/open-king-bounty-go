@@ -44,14 +44,16 @@ func (gs *GameState) FulfillContract(a *kbdata.Assets, villainID int) {
 	gs.MaxContract++
 }
 
-// TempDeath 對齊 C temp_death(play.c:1005):戰敗懲罰——清空隊伍、發還 20 名農夫。
+// TempDeath 對齊 C temp_death(play.c:1005):戰敗懲罰——傳送回家鄉、清空隊伍、
+// 發還 20 名農夫。玩家座標已移入 GameState(Continent/X/Y),故傳送回家在此完成
+// (special_coords[SP_HOME],y 減 1);WorldMapScreen 下次繪製即讀到新座標。
 //
-// ⚠ 偏離(架構限制,誠實標註):C 版還會把玩家傳送回家鄉(special_coords[SP_HOME])
-// 並清除攻城武器。本移植的玩家地圖座標仍存在 WorldMapScreen(cont/px/py)而非
-// GameState,siege_weapons 亦尚未建模,故 TempDeath 只還原「隊伍」這塊 GameState
-// 狀態;傳送回家由呼叫端(戰鬥畫面戰敗 → 重建世界地圖畫面)另行處理,見
-// PORT-STATUS「玩家座標移入 GameState」待辦。
+// ⚠ 偏離(誠實標註):C 版還會清除攻城武器(siege_weapons)與設定 mount=RIDE,
+// 這兩個欄位 GameState 尚未建模,故略過。
 func (gs *GameState) TempDeath(a *kbdata.Assets) {
+	if hc, hx, hy, ok := HomeCastleCoords(a); ok {
+		gs.Continent, gs.X, gs.Y = hc, hx, hy-1
+	}
 	for i := 0; i < 5; i++ {
 		gs.Army[i] = Squad{TroopID: 0xFF, Count: 0}
 	}

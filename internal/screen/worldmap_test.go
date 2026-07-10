@@ -24,6 +24,44 @@ func newTestWorldMapScreen(t *testing.T) (*WorldMapScreen, *gamestate.GameState,
 	return NewWorldMapScreen(gs, a), gs, a
 }
 
+// TestWorldMapScreen_MoveWritesGameState 驗證移動會寫回 GameState 的座標(位置已移入
+// GameState,不再由 WorldMapScreen 自己維護)——這是存讀檔位置持久 + 戰敗傳送回家的前提。
+// 用 embedded 世界資料(Load("") 沒有 land.org,gs.WorldMap 會是 nil)。
+func TestWorldMapScreen_MoveWritesGameState(t *testing.T) {
+	a := castleTestAssets(t) // embedded FS,含 land.org
+	gs := gamestate.NewGame(a, "Tester", 0, gamestate.DefaultWorldSeed)
+	if gs.WorldMap == nil {
+		t.Skip("embedded land.org 未載入,略過")
+	}
+	// 找一格「本身可走且右鄰也可走、兩格都非互動 tile」的純草地,把玩家放左格。
+	plain := func(tile byte) bool {
+		return walkable(tile) && tile != kbdata.TileTown && tile != kbdata.TileCastle &&
+			!kbdata.IsCastle(tile) && tile != kbdata.TileFoe && tile != kbdata.TileChest &&
+			!(tile >= kbdata.TileDwelling1 && tile <= kbdata.TileDwelling4)
+	}
+	found := false
+	for y := 0; y < kbdata.LevelH && !found; y++ {
+		for x := 0; x < kbdata.LevelW-1; x++ {
+			if plain(gs.WorldMap.Tile(0, x, y)) && plain(gs.WorldMap.Tile(0, x+1, y)) {
+				gs.Continent, gs.X, gs.Y = 0, x, y
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		t.Skip("找不到相鄰兩格純草地,略過")
+	}
+	s := NewWorldMapScreen(gs, a)
+	startX := gs.X
+	if tr := s.Update(input.Action{Kind: input.ActRight}); tr.Kind != KindStay {
+		t.Fatalf("走進純草地應留在地圖(Stay),got %v", tr.Kind)
+	}
+	if gs.X != startX+1 {
+		t.Errorf("移動未寫回 GameState:gs.X = %d, want %d", gs.X, startX+1)
+	}
+}
+
 // TestWorldMapScreen_KeymapHasSaveLoadLetters 驗證 Keymap 的情境字母列含 's'(存檔)
 // 與 'l'(讀檔),讓觸控層能浮出對應按鈕。
 func TestWorldMapScreen_KeymapHasSaveLoadLetters(t *testing.T) {
@@ -105,7 +143,8 @@ func TestWorldMapScreen_DwellingPushesRecruit(t *testing.T) {
 		for x := 1; x < kbdata.LevelW; x++ {
 			tile := gs.WorldMap.Tile(0, x, y)
 			if tile >= kbdata.TileDwelling1 && tile <= kbdata.TileDwelling4 {
-				s.px, s.py = x-1, y
+				// 位置改由 GameState 持有(px/py 已移除),直接寫 gs 座標。
+				gs.Continent, gs.X, gs.Y = 0, x-1, y
 				found = true
 				break
 			}
