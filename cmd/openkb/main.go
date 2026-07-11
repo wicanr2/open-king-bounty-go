@@ -47,6 +47,7 @@ var (
 	shotPath          = flag.String("shot", "", "debug:在第 -shotframe 幀把畫面存成此 PNG 後結束(截圖驗證用)")
 	shotFrame         = flag.Int("shotframe", 3, "debug:配合 -shot,第幾幀截圖(預設 3,讓首幀狀態穩定)")
 	forceTouch        = flag.Bool("touch", false, "debug:桌面也繪製觸控控制疊層(供按鈕 UX 設計/截圖驗證用)")
+	toastText         = flag.String("toast", "", "debug:第一幀即顯示此 toast 提示(截圖驗證 toast 外觀用)")
 )
 
 func rootScreen(a *kbdata.Assets) screen.Screen {
@@ -182,6 +183,7 @@ func main() {
 		log.Printf("art theme: none found in %s", *datadir)
 	}
 	app.ShotPath, app.ShotFrame = *shotPath, *shotFrame // debug 截圖(-shot 空則停用)
+	app.DebugToast = *toastText                         // debug:首幀顯示 toast(截圖驗證用)
 	if *shotPath == "" {
 		bgm.Init(os.DirFS(*datadir)) // BGM(data/music/scenes.ini;缺則靜音);headless 截圖時跳過(無 ALSA 裝置)
 	}

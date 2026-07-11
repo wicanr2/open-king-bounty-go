@@ -33,6 +33,9 @@ type Game struct {
 	touch  bool          // 是否繪製觸控疊層(僅行動裝置;桌面用鍵盤,畫了會污染「與 C 一模一樣」的內容區)
 	art    *ebiten.Image // 320×200 美術層 offscreen(每幀重畫,再 nearest 放大到輸出)
 	frames int           // Draw 已呼叫次數(-shot 截圖時判斷第幾幀)
+
+	toastMsg   string // 跨畫面短暫提示文字(切主題/音樂時);空=不顯示
+	toastTicks int    // toast 剩餘顯示幀數(遞減到 0 消失)
 }
 
 // New 建立遊戲迴圈,root 為起始畫面。boot 可為 nil;非 nil 時於「第一次 Draw」執行一次——
@@ -77,10 +80,14 @@ func (g *Game) updateMusic() {
 func (g *Game) handleSystem(a input.Action) bool {
 	switch a.Kind {
 	case input.ActThemeCycle:
-		screen.CycleTheme()
+		g.showToast("主題:" + themeLabel(screen.CycleTheme()))
 		return true
 	case input.ActMusicToggle:
-		bgm.Toggle()
+		if bgm.Toggle() {
+			g.showToast("音樂:開")
+		} else {
+			g.showToast("音樂:關")
+		}
 		return true
 	}
 	return false
@@ -92,6 +99,9 @@ func (g *Game) Draw(dst *ebiten.Image) {
 		if g.boot != nil {
 			g.boot() // JVM/繪圖已就緒,此時建 ebiten.Image 安全
 		}
+		if DebugToast != "" {
+			g.showToast(DebugToast) // -toast 截圖驗證用
+		}
 	}
 	if g.art == nil {
 		g.art = ebiten.NewImage(LogicalW, LogicalH)
@@ -100,13 +110,15 @@ func (g *Game) Draw(dst *ebiten.Image) {
 	render.ResetCJK()
 	g.art.Clear()
 	g.mgr.Draw(g.art)
+	var font *kbdata.CJKAtlas
+	if g.assets != nil {
+		font = g.assets.Font
+	}
 	if g.touch {
-		var font *kbdata.CJKAtlas
-		if g.assets != nil {
-			font = g.assets.Font
-		}
 		render.DrawTouchControls(g.art, input.NewTouchLayout(g.mgr.Keymap()).Controls(), font)
 	}
+	// 全域提示(切主題/音樂的短暫回饋)疊在最上層,桌面/手機皆顯示。
+	g.drawToast(font)
 	// ② 美術層 nearest 放大到輸出解析度(pixel art 銳利)。
 	var op ebiten.DrawImageOptions
 	op.GeoM.Scale(SCALE, SCALE)

@@ -282,7 +282,18 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
 - ~~minimap orb 迷霧(顯示整洲)~~ ✅ 已完成(2026-07-10):Fog-of-war + orb 揭示(見下方主題/打磨區)。
 - ~~sidebar 契約頭像疊圖~~ ✅ 經查已實作於 chrome.go drawSidebar。
 - ~~view_character 數值右對齊~~ ✅ 已完成(2026-07-10,drawLV 右對齊框右緣)。
-- 剩:view_army/recruit 亦可套 drawLV(同 helper)、sidebar 拼圖 piece 疊圖、end_week 完整化(皆次要)。
+- ~~view_army/recruit 亦可套 drawLV~~ ❌ **經查證不套(2026-07-11)**:這兩畫面數字是
+  C 的 **inline label:value**(view_army「生命:40 / 傷害:20-40 / 造價:100」;recruit
+  「可招募 999 名農夫 / 你最多可招募 100 名」),桌面截圖確認已對齊、不參差;drawLV 是
+  「數值右對齊框右緣」的欄式排版,只適用 view_character 那種 stat:value 欄——套到這兩畫面
+  反而**偏離 C**。故此項不做(非缺陷)。
+- ~~worldmap 拼圖 'p' 觸控出界~~ ✅ 已於三層觸控重構(sidebar 面板隱形熱區
+  {256,123,48,34} 在界內)+ commit 82c462b 修復。
+- ~~主題切換 toast 提示~~ ✅ 已完成(2026-07-11):`internal/app/toast.go`——切美術主題
+  (F8/☰)/切音樂(F9/音樂鈕)顯示置中提示(「主題:Amiga」「音樂:開/關」),深藍底金框,
+  ~1.8s 自動消失;-toast 旗標截圖驗證。
+- 剩:sidebar 拼圖 piece 疊圖(需 artifact/villain 世界狀態)、主題設定持久化、end_week
+  完整化(皆次要)。
 - 精確 week_id / opt_* gameplay 旗標、read_signpost 以外的細節音效/動畫。
 - RNG 逐 seed parity(演算法忠實,但未從第一個 rand() 起對齊 C,見 NewGame 註記)。
 - Android 模擬器整合驗收新系統(桌面 ffmpeg 已驗關鍵畫面)。
@@ -324,7 +335,8 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
       NWC logo(DOS 預設 embed),點「主題」鈕 swipe-hold 循環 DOS→Amiga→free(genesis 缺席跳過),
       主題/作弊鈕與新 atlas 字集均正確渲染。
 - [ ] **Genesis 主題**:`kb.bin` ROM 走 `md-rom.c`(不同管線,且 C 版僅 troop/villain/world,其餘回退 free)。
-- [ ] 切換 toast 提示 +（選用）主題設定持久化;worldmap 拼圖 p 觸控出界(次要)。
+- [x] **切換 toast 提示**——✅ 完成(2026-07-11,`internal/app/toast.go`):切主題/音樂顯示置中金框提示。
+- [ ]（選用）主題設定持久化(切主題後跨重啟記憶);worldmap 拼圖 p 觸控 —— ✅ 已修(見上,82c462b + 三層觸控)。
 
 ## 作弊選單(F12 / 觸控「作弊」)—— ✅ 完成(2026-07-10)
 
