@@ -6,6 +6,11 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 
 本檔是移植的**單一真相清單**(gap analysis)。C 功能函式見 openkb-code/src/game.c。
 
+> **現況摘要(2026-07-11)**:核心 + 進階系統全數移植,**遊戲可從新遊戲玩到通關**;含完整
+> 天數/時間系統(移動耗天·週結算·時限失敗)與 opt_* 六項遊戲調整選項。**剩餘皆屬非阻塞細節**:
+> 圍攻城牆障礙佈局、RNG 逐 seed parity、opening cartoon(free 無素材 N/A)、原生 Genesis ROM
+> 即時抽取管線。以下清單經 2026-07-11 逐條對碼查證清理;若某小節與本摘要或程式碼牴觸,以**程式碼**為準。
+
 ## ✅ 已完成
 
 | 畫面 / 系統 | C 對應 | Go |
@@ -27,7 +32,7 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 | **世界生成(城堡/惡棍/契約起手值)** | salt_villains/repopulate_castle/num_castles(play.c:77-182)+ spawn_game 城堡/契約段(374-478) | gamestate/castlegen.go + castle.go(NewGame 在 saltContinent 四洲之後跑;CastleOwner/CastleTroops/CastleNumbers/Contract 系列欄位,見下方獨立小節;**visit_castle 仍待後續**) |
 | **懸賞契約檢視** | view_contract(game.c:1641-1735) | viewcontract.go(無契約:sidebar.png 幀8 空框 +「你目前沒有懸賞契約！」;有契約:GR_VILLAIN 臉部 4 幀動畫 + STRL_VDESCS 描述文字,%s %s 代入洲名/城堡名;見下方獨立小節的資料溯源紀錄) |
 
-## ⬜ 剩餘畫面(以 C 源為規格逐一移植)
+## ✅ 畫面移植(原「剩餘畫面」清單,現幾乎全數完成;僅 display_cartoon = free 無素材 N/A)
 
 ### A. 檢視畫面(主要是顯示既有 gamestate,自足、優先)
 - [x] **view_puzzle** 拼圖(game.c:1392)——已完成(2026-07-10):5×5 拼圖,神器/惡棍掀開露出權杖周邊地圖。世界地圖 'p'。
@@ -35,7 +40,7 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 
 ### B. 地點畫面(多需世界狀態)
 - [x] **visit_castle / visit_own_castle / visit_home_castle** 城堡(2307/2381/2567)——已完成(2026-07-10),見下方獨立小節
-- [x] **lay_siege** 攻城(2520)——已完成(進圍攻戰;⚠ 勝利奪城 + 城牆障礙未做,見小節)
+- [x] **lay_siege** 攻城(2520)——已完成(進圍攻戰;勝利奪城已由 combat 戰後 hook 補上;⚠ 僅城牆障礙佈局未做)
 - [x] **audience_with_king** 謁見國王(2130)——已完成(兩頁對話 + 達門檻晉升)
 - [x] **visit_alcove** 魔法密室(2896)——已完成(2026-07-10):大法師 5000 金幣傳授魔法(KnowsMagic)。
 - [x] **visit_telecave** 傳送洞(2973)——已完成(2026-07-10):踩洞口瞬移到成對另一端
@@ -50,7 +55,7 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 - [x] **dismiss_army / dismiss_troop** 解散部隊(2027/play.c)——已完成(2026-07-10):
       世界地圖 'd',列部隊選解散;最後一支需確認 → temp_death。
 - [x] **choose_spell** 戰鬥+冒險施法(4275)——已完成(2026-07-10):全 14 法術,見下方剩餘清單。
-- [ ] **end_week** 週結算完整化(目前部分)
+- [x] **end_week** 週結算完整化 — ✅ 已完成(見下方時間系統小節:天數/週界/週結算畫面/時限失敗全套)
 - [x] 寶箱 take_chest(踩寶箱)——已完成(2026-07-10):海圖解鎖下一洲(補上 boat
       的探索觸發)/寶珠 orb_found /寶藏(金幣·領導力二選一·收入·法力·法術上限·獲法術·空箱)。
 
@@ -72,7 +77,7 @@ kbdata.WorldMap.Set。⚠ 圍攻城牆障礙佈局(combat mode=1 的 castle_umap
 - [x] **show_credits** 製作名單(706)——已完成(2026-07-10):標題按 'c' → CreditsScreen(credits.txt)。
 - [ ] **display_cartoon** 開場動畫 / 地球(4513)——free 模組無專屬 cartoon 動畫幀(僅 nwcp.png 商標,已用於 logo);低優先,可視為 N/A。
 
-## ⬜ 世界狀態(foundational — 解鎖上面多個畫面的真實動作邏輯)
+## ✅ 世界狀態(foundational — 解鎖上面多個畫面的真實動作邏輯;現已全數移植)
 
 recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent 生成的真實世界狀態
 (見下方「世界生成」段);town 的契約/租船/情報仍是「佔位 stub」,要讓它們變真實,
@@ -86,8 +91,8 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
 - [x] **castle** 世界狀態(castle_owner/troops/numbers、repopulate_castle、salt_villains,見下方獨立小節)——**visit_castle 三畫面 + 圍攻/謁見已完成(2026-07-10);garrison/ungarrison/castle_visited/villain_caught 已建模**
 - [x] **dwelling** 真實兵種 + 庫存(populate_dwelling/dwelling_population;recruit.go 已讀真實世界狀態)
 - [x] **foe** 真實部隊(foe_troops/foe_numbers;worldmap.go 已讀真實世界狀態,取代 placeholderFoe)
-- [ ] **artifact / scepter**(拼圖、尋寶、破關條件;座標已記錄於 map tile,尚未接 UI/撿拾邏輯)
-- [ ] **sidebar 動態內容**(draw_sidebar 的 contract 頭像疊圖 —— chrome.go drawSidebar 幀 8 目前恆顯示空框註解已過期:Contract 系統與 GR_VILLAIN 素材現已齊備,可疊 gs.Contract 對應的臉部幀,是低成本的後續補完,非世界狀態缺口;拼圖 piece 疊圖仍需 artifact/villain 世界狀態)
+- [x] **artifact / scepter** — ✅ 已完成(見下方「移植大致完成」:TakeArtifact 拾取 + PlaceScepter 埋權杖 + SearchScreen 搜索破關 + WinScreen)
+- [x] **sidebar 動態內容** — ✅ 已完成:契約頭像疊圖(chrome.go:53-54,gs.Contract≠0xFF 疊 VillainFace)+ 拼圖 piece 疊層(chrome.go drawPuzzlePieces,見下方打磨區)皆已實作。
 
 ### 世界生成(salt_continent)——已完成(2026-07-10)
 
@@ -230,10 +235,10 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
 - **worldmap.go** 城堡 tile 分派;進 your/enemy 記 `castle_visited`(供 select_gate)。
 - **chrome.go** 抽 `drawLocationBg` 共用(背景 + 迎賓兵種幾何,家鄉/招兵重用)。
 - 桌面 ffmpeg 截圖驗證四畫面版面忠實;6 個 screen 測試綠。
-- **⚠ 未完成(誠實標註)**:① 圍攻勝利後奪城(castle_owner=玩家、守軍換玩家駐防、
-  villain_caught)屬 run_combat mode=1 戰後結算,CombatScreen 目前無戰後世界狀態回寫
-  (與一般 foe 戰鬥同一缺口);② 圍攻城牆障礙佈局(combat mode=1)未建模;
-  ③ lay_siege 畫面 C 版是疊在世界地圖上(無 draw_location),本移植先清成黃底。
+- **後續更新**:① 圍攻勝利後奪城(castle_owner=玩家、守軍換玩家駐防、villain_caught)
+  **已由後續「combat 戰後 hook」補上**(combatscreen.go applyOutcome:CastleOwner=KBCastlePlayer +
+  FulfillContract);見上方「combat 戰後 hook」小節。**⚠ 仍未做**:② 圍攻城牆障礙佈局(combat
+  mode=1 castle_umap)未建模;③ lay_siege 畫面 C 版疊在世界地圖上(無 draw_location),本移植先清成黃底。
 
 ### boat 系統——已完成(2026-07-10)
 三切片,對齊 C game->boat/boat_x/boat_y/mount/continent_found 世界狀態 + 移動 boat 段
@@ -270,7 +275,7 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
   WinScreen)。**遊戲可從新遊戲玩到通關。** ⚠ 剩 view_puzzle 拼圖、戰鬥中神器 Powers(增傷/減傷)、
   結局動畫/圖(版權素材)。
 - [x] **view_puzzle / view_minimap / visit_alcove** — ✅ 已完成(2026-07-10)。
-- [x] **end_week 完整化** — ✅ 已完成(2026-07-10):停時歸零 + 巢穴/foe/城堡每週成長 + 空城堡補守軍。⚠ 剩精確 week_id(用 Week 計數近似)、opt_* 選項旗標。
+- [x] **end_week 完整化** — ✅ 已完成(2026-07-10 世界增長 + 2026-07-11 整套天數/時間系統,見下方「移植大致完成」段的時間系統小節)。精確 week_id(day-based)、opt_* 選項旗標皆已補齊。
 - [x] **開場 display_logo / show_credits** — ✅ 已完成(2026-07-10)。display_cartoon = free 無素材(N/A)。
 - [x] **戰鬥中神器 Powers** — ✅ 已完成(2026-07-10):PrepareUnitsPlayer 從 ArtifactFound 填 combat.Powers。
 
@@ -303,9 +308,15 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
   `DaysLeft==0` → `LoseScreen`(時間耗盡失敗);狀態列顯示真實遞減天數;`WeekID()=passed_days/5`;
   換洲改 `SpendWeek` 真推進天數。gs 加 DaysLeft/StepsLeft/Difficulty(固定 Normal)+ pending 暫存;
   單元測試(time_test:過天/跨週/停時凍結/SpendWeek/歸零)+ 桌面截圖(週結算·失敗畫面,補「陷」缺字改「沒」)。
-  **opt_\* 遊戲選項旗標**(no_wages/foe_strength/days_x2 等)未做——C 自身亦標 P3「不接遊戲機制」,
-  需獨立的選項設定畫面 + 機制接線,非本輪範圍,誠實標為後續(非阻塞)。
-- 精確 week_id / opt_* gameplay 旗標、read_signpost 以外的細節音效/動畫。
+- ~~opt_\* 遊戲選項旗標~~ ✅ **完成(2026-07-11)**:C 版 opt_* 已完整接進機制(先前誤記為
+  「C 標 P3 不接機制」——那只是 game_options_menu 上的過期註解,實際 P3 接線在 play.c/game.c
+  各處已做),Go 版跟上。gs 加 6 欄 `OptNoWages/OptAIMode/OptDaysX2/OptFoeFreq/OptFoeStrength/OptRecruitCaps`
+  (隨存檔持久);`internal/screen/gameoptions.go`(GameOptionsScreen,A–F 切換,由作弊選單 'o' 開啟,
+  對齊 C game_options_menu)。機制接線:no_wages→EndWeek 跳維護費、foe_strength→repopulateFoe 兵力×2、
+  foe_freq→weeklyWorldGrowth foe 成長×2/停/正常、recruit_caps→ArmyMaxTroopCount 高階夾制、
+  days_x2→切換即時加倍天數、ai_mode→combat `AIEvolved`(移植 `AIPickTargetEvolved`+`aiUnitThinkEvolved`,
+  對齊 C ai_unit_think_evolved)。單元測試(options_test + ai_evolved_test)+ 桌面截圖(選項畫面 6 項)。
+- read_signpost 以外的細節音效/動畫。
 - RNG 逐 seed parity(演算法忠實,但未從第一個 rand() 起對齊 C,見 NewGame 註記)。
 - Android 模擬器整合驗收新系統(桌面 ffmpeg 已驗關鍵畫面)。
 
@@ -314,12 +325,11 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
 
 ## 已知待打磨(跨畫面,非阻塞)
 
-- [ ] **數字欄右對齊**:C 格式字串用空格 padding 假設每個 CJK 字 = 2 個 ASCII 格,
-      但本移植 CJK 渲染是 1 格/字(雙層合成的專案慣例,換來 CJK 更銳利)。故有 `%Nd`
-      右對齊數字的畫面(view_character/view_army/recruit)不同長度標籤的數字 x 位置
-      略參差、偶有貼近/溢出框邊。**cosmetic、跨畫面一致、非 regression**。正解=寫個
-      CJK 格寬感知的欄位對齊 helper(從框右緣算數字 x,不靠空格 padding),之後一次
-      套用到所有這類畫面。
+- [x] **數字欄右對齊**:view_character 已用 `drawLV`(從框右緣算數字 x,CJK 格寬感知)完成右對齊。
+      view_army/recruit **經查證(2026-07-11)本就忠實 C 的 inline label:value 排版**(view_army
+      「生命:40 / 傷害:20-40 / 造價:100」;recruit「可招募 999 名農夫 / 你最多可招募 100 名」),
+      桌面截圖確認已對齊不參差;drawLV 是「數值右對齊框右緣」的欄式排版,只適用 view_character
+      那種 stat:value 欄——套到這兩畫面反而偏離 C,故不套(非缺陷)。
 
 ## 美術主題切換(F8 / ☰)—— 進行中(2026-07-10)
 
@@ -345,7 +355,7 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
       (ActThemeCycle,觸控無 F8)。桌面 Xvfb + **Android 模擬器實機**驗證:APK 開機為 DOS 版
       NWC logo(DOS 預設 embed),點「主題」鈕 swipe-hold 循環 DOS→Amiga→free(genesis 缺席跳過),
       主題/作弊鈕與新 atlas 字集均正確渲染。
-- [ ] **Genesis 主題**:`kb.bin` ROM 走 `md-rom.c`(不同管線,且 C 版僅 troop/villain/world,其餘回退 free)。
+- [x] **Genesis 主題**:✅ 素材已抽(`scripts/extract-genesis-theme.sh` → `data/genesis/`)、切換可用、Android 模擬器已驗(城堡/世界地圖 Genesis 正確渲染)。⚠ 僅「依原生 `kb.bin` ROM 即時動態抽取」這條特殊管線未做(現況是預先跑腳本匯出成靜態圖檔;C 版該管線本身也僅 troop/villain/world,其餘回退 free),非阻塞。
 - [x] **切換 toast 提示**——✅ 完成(2026-07-11,`internal/app/toast.go`):切主題/音樂顯示置中金框提示。
 - [x] **主題設定持久化**——✅ 完成(2026-07-11):`internal/save/settings.go`(openkb/settings.json,
       與存檔同 base)+ loadart.go(`CycleTheme` 寫偏好、`InitThemes` 起始套用 `themeStartIndex`);

@@ -82,13 +82,13 @@ func (gs *GameState) populateDwelling(a *kbdata.Assets, rng kbrng.Rand, continen
 // 雖然陣列宣告是 5 格——第 3、4 格刻意留零值,不是漏寫,照抄此怪癖),
 // 每格各自 rollCreature 一次。
 //
-// 省略 C 的 `if (game->opt_foe_strength) troop_count *= 2;`(issue #9 P3 選項):
-// GameState 目前沒有 opt_foe_strength 這個玩家選項欄位(見 gamestate.go,options
-// 世界狀態尚未移植),沒有來源可讀,故誠實省略,不擅自預設開/關。之後補上該選項時
-// 在此加一行即可。
 func (gs *GameState) repopulateFoe(continent, foeID int, rng kbrng.Rand) {
 	for i := 0; i < 3; i++ {
 		troopID, count := rollCreature(rng, continent)
+		// opt_foe_strength 開啟:新產生的敵人兵力加倍(對齊 C repopulate_foe,play.c:97-98)。
+		if gs.OptFoeStrength {
+			count *= 2
+		}
 		gs.FoeTroops[continent][foeID][i] = troopID
 		gs.FoeNumbers[continent][foeID][i] = count
 	}

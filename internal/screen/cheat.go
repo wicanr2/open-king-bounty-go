@@ -63,6 +63,7 @@ var cheatItems = []cheatItem{
 		gs.Mount = gamestate.KBMountFly // 順帶飛行(對齊 C 'f',一併給機動力)
 		return "已解鎖下一洲 + 寶珠 + 飛行"
 	}},
+	{'o', "遊戲選項", nil}, // 由 Update 開啟 GameOptionsScreen(對齊 C debug 選單 → game_options_menu)
 	{'w', "立即勝利", nil}, // 由 Update 轉場到 WinScreen
 }
 
@@ -81,6 +82,9 @@ func (s *CheatMenuScreen) Update(a input.Action) Transition {
 	case input.ActLetter:
 		if a.Rune == 'w' {
 			return Replace(NewWinScreen(s.gs, s.assets))
+		}
+		if a.Rune == 'o' {
+			return Push(NewGameOptionsScreen(s.gs, s.assets))
 		}
 		for _, c := range cheatItems {
 			if c.key == a.Rune && c.apply != nil {

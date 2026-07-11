@@ -114,6 +114,10 @@ func troopHP(a *kbdata.Assets, troopID int) int {
 //  3. 士氣、Powers 神器加成、demonKills 等已經在 damage.go 處理,AIUnitThink
 //     不重複套用。
 func (c *Combat) AIUnitThink(a *kbdata.Assets, rng kbrng.Rand) (pass bool) {
+	// opt_ai_mode 開啟時走進化版決策(對齊 C game.c:6507 的三元切換)。
+	if c.AIEvolved {
+		return c.aiUnitThinkEvolved(a, rng)
+	}
 	u := &c.Units[c.Side][c.UnitID]
 
 	closeSide, closeID, hasClose := c.AIPickTarget(a, true)
@@ -241,4 +245,112 @@ func (c *Combat) aiClosestOffset(posX, posY, originX, originY, targetX, targetY 
 		return pickedX, pickedY
 	}
 	return 0, 0
+}
+
+// AIPickTargetEvolved 對應 C ai_pick_target_evolved(game.c:6184):進化版計分選敵——
+// 先解決敵方射手(有彈藥的射手 +1000)、偏好高階兵種(SkillLevel×20)與高傷
+// (MeleeMax+RangedMax);nearby 時偏好「已反擊過」的目標(+30,打它不再挨還手)。
+// nearby=true 只考慮貼身敵人(對齊 C unit_touching → 這裡用 Adjacent)。取分數最高者。
+func (c *Combat) AIPickTargetEvolved(a *kbdata.Assets, nearby bool) (side, id int, ok bool) {
+	actor := &c.Units[c.Side][c.UnitID]
+	underControl := !actor.OutOfControl
+	best := -1
+	for j := 0; j < MaxSides; j++ {
+		for i := 0; i < MaxUnits; i++ {
+			u := &c.Units[j][i]
+			if u.Count == 0 || (j == c.Side && i == c.UnitID) || (j == c.Side && underControl) {
+				continue
+			}
+			if nearby && !Adjacent(u.X, u.Y, actor.X, actor.Y) {
+				continue
+			}
+			if u.TroopID < 0 || u.TroopID >= len(a.Troops) {
+				continue
+			}
+			t := &a.Troops[u.TroopID]
+			score := t.SkillLevel*20 + t.MeleeMax + t.RangedMax
+			if u.Shots > 0 && t.RangedShots > 0 {
+				score += 1000
+			}
+			if nearby && u.Retaliated {
+				score += 30
+			}
+			if score > best {
+				best, side, id, ok = score, j, i, true
+			}
+		}
+	}
+	return side, id, ok
+}
+
+// aiUnitThinkEvolved 對應 C ai_unit_think_evolved(game.c:6219):結構同 AIUnitThink,
+// 差異=(a) 目標一律用 AIPickTargetEvolved;(b) 新增「射手被貼身無法射擊時,改近戰
+// 攻擊而非空等」。顆粒度與回傳語意與 AIUnitThink 相同(逐 tick、一次一動作)。
+func (c *Combat) aiUnitThinkEvolved(a *kbdata.Assets, rng kbrng.Rand) (pass bool) {
+	u := &c.Units[c.Side][c.UnitID]
+	closeSide, closeID, hasClose := c.AIPickTargetEvolved(a, true)
+	acted := false
+
+	// 凍結
+	if !acted && u.Frozen {
+		u.Acted = true
+		acted = true
+	}
+
+	// 有射擊且無貼身敵人 → 射遠處目標
+	if !acted && u.Shots > 0 && !hasClose {
+		if farSide, farID, hasFar := c.AIPickTargetEvolved(a, false); hasFar {
+			c.UnitRangedShot(a, rng, c.Side, c.UnitID, farSide, farID)
+			u.Acted = true
+			acted = true
+		}
+	}
+
+	// 進化版新增:射手被貼身(不能射)→ 改近戰攻擊/移動,不空等(對齊 C 6239-6247)。
+	if !acted && u.Shots > 0 && hasClose {
+		t := &c.Units[closeSide][closeID]
+		if Adjacent(u.X, u.Y, t.X, t.Y) {
+			c.UnitHitUnit(a, rng, c.Side, c.UnitID, closeSide, closeID)
+			u.Acted = true
+			acted = true
+		} else if ox, oy := c.aiClosestOffset(u.X, u.Y, u.X, u.Y, t.X, t.Y); ox != 0 || oy != 0 {
+			acted = c.MoveUnit(c.Side, c.UnitID, u.X+ox, u.Y+oy)
+		}
+	}
+
+	// 可飛且無貼身敵人 → 飛向遠處目標
+	if !acted && u.Flights > 0 && !hasClose {
+		if farSide, farID, hasFar := c.AIPickTargetEvolved(a, false); hasFar {
+			nx, ny := c.aiFlyOffset(c.Side, c.UnitID, farSide, farID)
+			if nx != u.X || ny != u.Y {
+				acted = c.FlyUnit(c.Side, c.UnitID, nx, ny)
+			}
+		}
+	}
+
+	// 無射擊 → 近戰/移動向目標
+	if !acted && u.Shots == 0 {
+		tSide, tID, hasT := closeSide, closeID, hasClose
+		if !hasT {
+			tSide, tID, hasT = c.AIPickTargetEvolved(a, false)
+		}
+		if hasT {
+			t := &c.Units[tSide][tID]
+			if Adjacent(u.X, u.Y, t.X, t.Y) {
+				c.UnitHitUnit(a, rng, c.Side, c.UnitID, tSide, tID)
+				u.Acted = true
+				acted = true
+			} else if ox, oy := c.aiClosestOffset(u.X, u.Y, u.X, u.Y, t.X, t.Y); ox != 0 || oy != 0 {
+				acted = c.MoveUnit(c.Side, c.UnitID, u.X+ox, u.Y+oy)
+			}
+		}
+	}
+
+	if !acted {
+		if c.Phase > 0 {
+			u.Acted = true
+		}
+		return true
+	}
+	return false
 }

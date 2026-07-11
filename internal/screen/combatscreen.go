@@ -68,6 +68,9 @@ type CombatScreen struct {
 func NewCombatScreen(gs *gamestate.GameState, a *kbdata.Assets, foe [combat.MaxUnits]gamestate.Squad, seed uint32) *CombatScreen {
 	c := &combat.Combat{}
 	rng := kbrng.NewGlibc(seed)
+	if gs != nil {
+		c.AIEvolved = gs.OptAIMode // opt_ai_mode:敵方 AI 走進化版決策
+	}
 	combat.PrepareUnitsPlayer(c, 0, gs, a)
 	combat.PrepareUnitsFoe(c, 1, foe, a)
 	c.ResetMatch(a, rng, false)

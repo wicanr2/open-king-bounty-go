@@ -42,6 +42,7 @@ var (
 	startMenu         = flag.Bool("startmenu", false, "debug:直接在世界地圖上疊出系統選單 dialog(截圖驗證用)")
 	startEndWeek      = flag.Bool("startendofweek", false, "debug:直接進週結算畫面(第 N 週,占星+收支,截圖驗證用)")
 	startLose         = flag.Bool("startlose", false, "debug:直接進時間耗盡的遊戲結束畫面(截圖驗證用)")
+	startOptions      = flag.Bool("startoptions", false, "debug:直接進遊戲調整設定畫面(opt_* 選項,截圖驗證用)")
 	theme             = flag.String("theme", "", "debug:強制起始美術主題(dos/genesis/amiga/free),空=預設偏好序")
 	recruitRtype      = flag.Int("rtype", 0, "debug:配合 -startrecruit,棲地類型(0=平原 1=森林 2=山丘 3=地下城)")
 	recruitTroop      = flag.Int("recruittroop", 0, "debug:配合 -startrecruit,招募兵種 TroopID")
@@ -104,6 +105,10 @@ func rootScreen(a *kbdata.Assets) screen.Screen {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
 		gs.DaysLeft = 0
 		return screen.NewLoseScreen(gs, a)
+	}
+	if *startOptions {
+		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
+		return screen.NewGameOptionsScreen(gs, a)
 	}
 	if *startCastleOwn {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))

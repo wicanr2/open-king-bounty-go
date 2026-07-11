@@ -37,18 +37,20 @@ func (gs *GameState) EndWeek(a *kbdata.Assets, rng kbrng.Rand) int {
 	// 俸祿
 	gs.Gold += gs.Commission
 
-	// 隊伍維護費
-	credit := 0
-	for i := 0; i < 5; i++ {
-		if gs.Army[i].Count == 0 {
-			continue
+	// 隊伍維護費(opt_no_wages 開啟時完全跳過扣款,對齊 C play.c:1052-1053)。
+	if !gs.OptNoWages {
+		credit := 0
+		for i := 0; i < 5; i++ {
+			if gs.Army[i].Count == 0 {
+				continue
+			}
+			credit += gs.Army[i].Count * (a.Troops[gs.Army[i].TroopID].GoldCost / 10)
 		}
-		credit += gs.Army[i].Count * (a.Troops[gs.Army[i].TroopID].GoldCost / 10)
-	}
-	if credit <= gs.Gold {
-		gs.Gold -= credit
-	} else {
-		gs.Gold = 0
+		if credit <= gs.Gold {
+			gs.Gold -= credit
+		} else {
+			gs.Gold = 0
+		}
 	}
 
 	// 農夫週:吸收型單位(鬼)化為農夫
@@ -78,6 +80,16 @@ func (gs *GameState) weeklyWorldGrowth(a *kbdata.Assets, rng kbrng.Rand, creatur
 	growth := a.Troops[creature].Growth
 	maxPop := a.Troops[creature].MaxPopulation
 
+	// foe 成長量受 opt_foe_freq 調整(對齊 C play.c:1085-1089):0=正常、1=加速×2、2=停止。
+	// 只作用於 foe;棲地補滿與城堡成長不受影響。
+	foeGrow := growth
+	switch gs.OptFoeFreq {
+	case 1:
+		foeGrow *= 2
+	case 2:
+		foeGrow = 0
+	}
+
 	// 補滿空的玩家城堡(對齊 C:owner==0xFF 且 castle_numbers[j][0]==0 → repopulate)。
 	castles := LoadCastles(a)
 	for j := 0; j < kbdata.MaxCastles; j++ {
@@ -93,11 +105,11 @@ func (gs *GameState) weeklyWorldGrowth(a *kbdata.Assets, rng kbrng.Rand, creatur
 				gs.DwellingPopulation[cont][i] = maxPop
 			}
 		}
-		// foe:本週生物 +growth。
+		// foe:本週生物 +foeGrow(受 opt_foe_freq 調整)。
 		for j := 0; j < kbdata.MaxFoes; j++ {
 			for i := 0; i < 3; i++ {
 				if gs.FoeTroops[cont][j][i] == creature {
-					gs.FoeNumbers[cont][j][i] += growth
+					gs.FoeNumbers[cont][j][i] += foeGrow
 				}
 			}
 		}

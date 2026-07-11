@@ -37,6 +37,10 @@ type Combat struct {
 
 	Side   int // 目前行動方,索引 Units;C: byte side
 	UnitID int // 目前行動單位,Units[Side][UnitID];C: byte unit_id
+
+	// AIEvolved:true 時 AI 走進化版決策(對齊 C opt_ai_mode → ai_unit_think_evolved,
+	// game.c:6507)。由建 combat 時從 gs.OptAIMode 設定;預設 false = 原版 AI。
+	AIEvolved bool
 }
 
 // InBounds 回傳 (x,y) 是否落在可通行棋盤範圍內([0,BoardW) x [0,BoardH))。

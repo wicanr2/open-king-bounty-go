@@ -35,7 +35,47 @@ func (gs *GameState) ArmyMaxTroopCount(a *kbdata.Assets, troopID int) int {
 	if hp <= 0 {
 		return 0
 	}
-	return gs.ArmyLeadership(a, troopID) / hp
+	max := gs.ArmyLeadership(a, troopID) / hp
+
+	// opt_recruit_caps 開啟:高階兵種可招募數夾到「上限 - 目前已持有」(對齊 C
+	// army_max_troop_count,play.c:614-635)。上限值照抄 C:法師50/火龍15/惡魔20/吸血鬼20/武士20。
+	if gs.OptRecruitCaps {
+		cap := recruitCapFor(troopID)
+		if cap >= 0 {
+			held := 0
+			for i := 0; i < 5; i++ {
+				if gs.Army[i].TroopID == troopID {
+					held += gs.Army[i].Count
+				}
+			}
+			room := cap - held
+			if room < 0 {
+				room = 0
+			}
+			if max > room {
+				max = room
+			}
+		}
+	}
+	return max
+}
+
+// recruitCapFor 回傳 opt_recruit_caps 下該高階兵種的持有上限(-1 = 不受限),
+// 對齊 C army_max_troop_count 的 switch(play.c:614-620)。
+func recruitCapFor(troopID int) int {
+	switch troopID {
+	case 0x14: // Archmage 法師
+		return 50
+	case 0x18: // Dragon 火龍
+		return 15
+	case 0x17: // Demon 惡魔
+		return 20
+	case 0x15: // Vampire 吸血鬼
+		return 20
+	case 0x0E: // Knight 武士
+		return 20
+	}
+	return -1
 }
 
 // addTroop 把 number 隻某兵種加進隊伍,對應 C add_troop(play.c:863):

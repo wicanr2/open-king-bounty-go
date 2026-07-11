@@ -48,6 +48,15 @@ type GameState struct {
 	PendingWeekCreature int  `json:"-"` // 待顯示週結算的本週生物 id
 	PendingWeekGold     int  `json:"-"` // 週結算前的金幣(供收支表「現有」欄)
 
+	// 遊戲調整選項(對齊 C game->opt_*,issue #9;game_options_menu 切換、隨存檔持久,
+	// 各自接進機制:見 time.go/week.go/worldgen.go/recruit.go/combat)。起手全 0/false。
+	OptNoWages     bool // 允許不支付薪水:週結算跳過軍隊維護費
+	OptAIMode      bool // 戰鬥 AI:true=進化版(ai_unit_think_evolved)、false=原版
+	OptDaysX2      bool // 回合數延長兩倍:切換當下即時加倍/折半 DaysLeft
+	OptFoeFreq     int  // 敵人每週成長:0=正常、1=加速(×2)、2=停止
+	OptFoeStrength bool // 隨機敵人出現強度:true=新生敵人兵力 ×2
+	OptRecruitCaps bool // 限制高階兵種招募上限(法師/火龍/惡魔/吸血鬼/武士)
+
 	// 失竊權杖(破關目標)位置,對應 C game->scepter_continent/scepter_x/scepter_y。
 	// 由 NewGame 隨機埋在某洲的某片草地(PlaceScepter);玩家走到該格搜索即獲勝。
 	ScepterContinent int
