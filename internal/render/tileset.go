@@ -82,6 +82,11 @@ func (t *Tileset) TileImage(m byte) *ebiten.Image {
 	if t == nil {
 		return nil
 	}
+	// 剝除互動位(bit7):對齊 C KB_GetMapTile(game.c:1012)「WITH INTERACTIVITY BIT
+	// REMOVED」——地圖 cell 的高位標記「可踩上互動」(城堡入口 0x85、城鎮 0x8A、寶箱
+	// 0x8B、巢穴等),繪圖時圖案 = m & 0x7F(0x85→5 城門、0x8A→10 城鎮…)。不剝除的話
+	// m>71 會退回 tile 0(草),城堡中央城門格就被畫成草地、城堡斷成兩半(缺中央格)。
+	m &= 0x7f
 	sheet := t.tileseta
 	idx := int(m)
 	if idx >= tilesPerSheet {
