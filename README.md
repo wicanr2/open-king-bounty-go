@@ -4,6 +4,10 @@
 
 ![世界地圖(free 開放美術主題,含 Android 觸控疊層)](docs/screenshots/readme_map.png)
 
+[![Android 版實機遊玩影片](https://img.youtube.com/vi/dyidtOuqwEc/hqdefault.jpg)](https://youtu.be/dyidtOuqwEc)
+
+▶ **[Android 版實機遊玩影片](https://youtu.be/dyidtOuqwEc)**(YouTube)
+
 三十多年前,你在 14 吋 CRT 前騎著馬走過這張地圖,招兵、追捕惡棍、翻出藏起來的權杖。那是 New World Computing 後來《魔法門》系列的原型,也是「英雄無敵」戰棋的祖師爺。它值得被記得,更值得能繼續玩——在沒有 DOSBox、不必翻出老主機的今天,直接在手機上點開就能玩。
 
 這個專案做兩件事:**用純 Go + [Ebiten](https://ebitengine.org) 把它乾淨重寫一遍**,一份原始碼同時出 Android / Windows / macOS / Linux / Web;以及**完整繁體中文化**,連遊戲內建的懸賞公告、路標、國王對話都翻過來。

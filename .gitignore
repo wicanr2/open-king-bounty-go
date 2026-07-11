@@ -21,6 +21,12 @@
 *.ROM
 *.rom
 
+# 簽章機密(release keystore + 密碼一律 repo 外,勿入庫;見 docs/BUILD.md)
+*.jks
+*.keystore
+keystore-info.txt
+/android-release/
+
 # 黃金樣本/暫存
 /testdata/oracle/*.raw
 /dist/

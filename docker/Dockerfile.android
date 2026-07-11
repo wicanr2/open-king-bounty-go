@@ -1,0 +1,51 @@
+# openkb Android 建置映像 —— 重現 Go/Ebiten APK 的整套工具鏈(debug build + 16KB release 簽章)。
+#
+# 內容:eclipse-temurin 17 + Go 1.24.13 + Android SDK(platform-34、build-tools 34+35、NDK 26.1)
+#       + Gradle 8.7 + ebitenmobile(pin 到 go.mod 的 ebiten 版本)。
+# 為求精簡,**不含 emulator / system-image**(那是 emu-verify 用、體積大);要跑模擬器驗證時
+# 另補一行 sdkmanager(見 docs/BUILD.md「模擬器驗證」)。
+#
+# 建置:  docker build -f docker/Dockerfile.android -t openkb-android-build .
+# 用法:  見 docs/BUILD.md(掛 repo→/src、go 快取 volume→/go,呼叫 scripts/build-*.sh)。
+#
+# 版本全部 pin 死:改版時同步更新此檔 + docs/BUILD.md。build-tools 35 是 16KB `zipalign -P 16`
+# 的必要條件(34 的 zipalign 只有舊 4KB 的 -p)。ebitenmobile 必須與 go.mod 的 ebiten 同版。
+FROM eclipse-temurin:17-jdk-jammy
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      wget unzip git curl file ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Go 1.24.13(對齊 go.mod go 1.24.0;ebiten v2.9.9 需現代 Go)
+RUN wget -q https://go.dev/dl/go1.24.13.linux-amd64.tar.gz \
+    && tar -C /usr/local -xzf go1.24.13.linux-amd64.tar.gz && rm go1.24.13.linux-amd64.tar.gz
+
+ENV ANDROID_HOME=/opt/android-sdk
+ENV ANDROID_NDK_HOME=/opt/android-sdk/ndk/26.1.10909125
+ENV GOTOOLPATH=/opt/go
+ENV PATH=/usr/local/go/bin:/opt/go/bin:/opt/gradle/bin:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Android command-line tools
+RUN mkdir -p ${ANDROID_HOME}/cmdline-tools && cd ${ANDROID_HOME}/cmdline-tools \
+    && wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O clt.zip \
+    && unzip -q clt.zip && mv cmdline-tools latest && rm clt.zip
+
+# SDK 套件:platform-34、build-tools 34 + 35(35 供 16KB zipalign -P)、NDK 26.1
+RUN yes | sdkmanager --licenses >/dev/null 2>&1 || true
+RUN sdkmanager --install \
+      "platform-tools" \
+      "platforms;android-34" \
+      "build-tools;34.0.0" \
+      "build-tools;35.0.0" \
+      "ndk;26.1.10909125" >/dev/null
+
+# Gradle 8.7(AGP 8.1.4 相容)
+RUN wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip -O /tmp/g.zip \
+    && unzip -q /tmp/g.zip -d /opt && mv /opt/gradle-8.7 /opt/gradle && rm /tmp/g.zip
+
+# ebitenmobile —— 必須 pin 到 go.mod 的 ebiten 版本(v2.9.9);baked 進 /opt/go/bin(已在 PATH)。
+RUN GOPATH=/opt/go GOCACHE=/tmp/gc go install github.com/hajimehoshi/ebiten/v2/cmd/ebitenmobile@v2.9.9 \
+    && rm -rf /tmp/gc
+
+WORKDIR /work
