@@ -66,7 +66,7 @@ func (s *NavigateContinentScreen) sail(idx int) Transition {
 }
 
 func (s *NavigateContinentScreen) Draw(dst *ebiten.Image) {
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 	drawTopBox(dst, s.assets, "按 'ESC' 離開")
 	drawSidebar(dst, s.gs, 0)
 	lines := []string{"前往哪一洲?", ""}

@@ -211,7 +211,7 @@ func (s *RecruitScreen) menuLines() []string {
 }
 
 func (s *RecruitScreen) Draw(dst *ebiten.Image) {
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 	drawTopBox(dst, s.assets, "按 'ESC' 離開")
 	s.drawLocation(dst)
 	drawSidebar(dst, s.gs, 0) // C: draw_sidebar(game, 0) —— 棲地畫面 tick 恆 0,無迎賓動畫

@@ -32,6 +32,7 @@ type Game struct {
 	booted bool
 	touch  bool          // 是否繪製觸控疊層(僅行動裝置;桌面用鍵盤,畫了會污染「與 C 一模一樣」的內容區)
 	art    *ebiten.Image // 320×200 美術層 offscreen(每幀重畫,再 nearest 放大到輸出)
+	frames int           // Draw 已呼叫次數(-shot 截圖時判斷第幾幀)
 }
 
 // New 建立遊戲迴圈,root 為起始畫面。boot 可為 nil;非 nil 時於「第一次 Draw」執行一次——
@@ -110,6 +111,9 @@ func (g *Game) Draw(dst *ebiten.Image) {
 	dst.DrawImage(g.art, &op)
 	// ③ CJK 在輸出解析度以 24×24 + 黑外框疊上(銳利可讀)。
 	render.FlushCJK(dst, SCALE)
+	// -shot debug 截圖(ShotPath 為空時零成本跳過)。
+	g.frames++
+	maybeShot(dst, g.frames)
 }
 
 func (g *Game) Layout(outsideW, outsideH int) (int, int) {

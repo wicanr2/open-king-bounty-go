@@ -29,7 +29,7 @@ func (s *WinScreen) Update(a input.Action) Transition {
 }
 
 func (s *WinScreen) Draw(dst *ebiten.Image) {
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 	drawTopBox(dst, s.assets, "破關!")
 	drawBottomFrame(dst, s.assets, []string{
 		"你尋回了失竊的",

@@ -46,7 +46,7 @@ func drawSidebar(dst *ebiten.Image, gs *gamestate.GameState, frame int) {
 	}
 	knowsMagic := gs != nil && gs.KnowsMagic
 
-	y := mapY // 21,對齊地圖頂
+	y := mapY                              // 21,對齊地圖頂
 	sidebarSprite.DrawFrame(dst, 8, sx, y) // 幀8=契約框
 	// 契約臉:對齊 C draw_sidebar(game.c:1147)——contract != 0xFF 時,把目標
 	// villain 的臉(GR_VILLAIN[contract],frame 動畫)疊在契約框上(不去背,整格覆蓋)。
@@ -127,6 +127,25 @@ func drawBottomFrame(dst *ebiten.Image, assets *kbdata.Assets, lines []string) {
 	for i, line := range lines {
 		render.DrawText(dst, assets.Font, line, bottomTextX, bottomHeaderY+i*render.CJKCell, color.White)
 	}
+}
+
+// chromeContentB 是 chrome 畫面「內容區」底:底部選單框底(bottomBorderY+bottomBorderH=192)。
+// 世界地圖無底部選單(內容底=地圖底 191),但金框帶畫在此矩形外,192 與 191 差 1px 無感,
+// 故所有 chrome 畫面共用同一內容區底,金框位置一致。
+const chromeContentB = bottomBorderY + bottomBorderH // 192
+
+// drawChromeFrame 畫 chrome 畫面背景(取代舊的 dst.Fill(colorBorder)「整片填亮黃」bug):
+// 填黑(對齊 C 外圍未清區)+ 只在 play area 外圈畫 worldFrameBand 寬的金框帶。play area =
+// 狀態列/地點背景/側欄/底部選單的外接矩形(worldContentL/T/R × chromeContentB)。各畫面
+// 內容隨後蓋掉內部,只留外圈金框 + 元件間隙的金色分隔線 —— 對齊 C 的結構(黑底+細金框),
+// 而非舊版誤把整片填黃(見 worldmap.go colorBorder 註解)。
+func drawChromeFrame(dst *ebiten.Image) {
+	dst.Fill(colorOuter)
+	vector.DrawFilledRect(dst,
+		float32(worldContentL-worldFrameBand), float32(worldContentT-worldFrameBand),
+		float32(worldContentR-worldContentL+2*worldFrameBand),
+		float32(chromeContentB-worldContentT+2*worldFrameBand),
+		colorBorder, false)
 }
 
 // drawLocationBg 畫地點背景 + 迎賓兵種,對齊 C draw_location(loc_id, troop_id, frame)

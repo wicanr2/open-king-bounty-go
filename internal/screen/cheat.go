@@ -93,7 +93,7 @@ func (s *CheatMenuScreen) Update(a input.Action) Transition {
 }
 
 func (s *CheatMenuScreen) Draw(dst *ebiten.Image) {
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 	drawTopBox(dst, s.assets, "作弊選單(按字母,ESC 離開)")
 	drawSidebar(dst, s.gs, 0)
 	head := "作弊指令(按字母鍵):"

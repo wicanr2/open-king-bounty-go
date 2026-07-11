@@ -147,7 +147,7 @@ func (s *RecruitSoldiersScreen) menuLines() []string {
 }
 
 func (s *RecruitSoldiersScreen) Draw(dst *ebiten.Image) {
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 	drawTopBox(dst, s.assets, "按 'ESC' 離開")
 	// 背景:家鄉城堡內部(locID=0=cstl)+ 迎賓兵種(bgTroop);對齊
 	// C draw_location(loc_id, troop_id, frame),frame 取靜態 0(同 recruit.go 慣例)。

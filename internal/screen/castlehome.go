@@ -76,7 +76,7 @@ func (s *CastleHomeScreen) activate(idx int) Transition {
 }
 
 func (s *CastleHomeScreen) Draw(dst *ebiten.Image) {
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 	drawTopBox(dst, s.assets, "按 'ESC' 離開")
 	drawLocationBg(dst, LocationBg(homeCastleLoc), s.bgTroop, 0)
 	drawSidebar(dst, s.gs, 0)

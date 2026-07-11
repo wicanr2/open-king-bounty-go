@@ -86,7 +86,7 @@ func (s *ViewContractScreen) Update(a input.Action) Transition {
 func (s *ViewContractScreen) Draw(dst *ebiten.Image) {
 	// 外框:同 viewarmy.go/viewcharacter.go 慣例,C 版不清畫面(疊在前一畫面殘留
 	// 上),本引擎每畫面全幅重繪,先填邊框色近似之。
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 
 	// 訊息框(藍底,對齊 SDL_TextRect 的 back=colors[COLOR_BACKGROUND]=[generic]
 	// background=#0000aa=colorStatus)。C 版另外用 colors[COLOR_FRAME](#ffff55=

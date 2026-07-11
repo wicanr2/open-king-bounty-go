@@ -117,7 +117,7 @@ func (s *ViewCharacterScreen) Update(a input.Action) Transition {
 func (s *ViewCharacterScreen) Draw(dst *ebiten.Image) {
 	// 外框:同 viewarmy.go 慣例,C 版不清畫面(疊在前一畫面殘留上),本引擎每畫面
 	// 全幅重繪,故先填邊框色,未被下方元素蓋到的區域就是視覺上的黃邊框。
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 
 	class := 0
 	if s.gs != nil {

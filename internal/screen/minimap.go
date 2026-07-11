@@ -34,7 +34,7 @@ func (s *MinimapScreen) Update(a input.Action) Transition {
 }
 
 func (s *MinimapScreen) Draw(dst *ebiten.Image) {
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 	drawTopBox(dst, s.assets, "本洲地圖(按任意鍵離開)")
 	drawSidebar(dst, s.gs, 0)
 	if s.gs == nil || s.gs.WorldMap == nil {

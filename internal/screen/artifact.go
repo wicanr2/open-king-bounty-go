@@ -39,7 +39,7 @@ func (s *ArtifactScreen) Update(a input.Action) Transition {
 }
 
 func (s *ArtifactScreen) Draw(dst *ebiten.Image) {
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 	drawTopBox(dst, s.assets, "按 'ESC' 離開")
 	drawSidebar(dst, s.gs, 1) // C: draw_sidebar(game, 1)——拾得神器時用 tick 1
 	drawBottomFrame(dst, s.assets, s.lines)

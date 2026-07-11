@@ -108,11 +108,29 @@ const (
 )
 
 // 邊框與狀態列色(對齊 C data/free/colors.ini:frame1/frame2 = #ffff55、background = #0000aa)。
-// C 版做法是整個畫面先清成 COLOR_FRAME,狀態列/地圖/側欄再蓋掉內部,四周沒蓋到的
-// 就是視覺上的黃框——不必額外畫 4 條 FillRect。
+//
+// ⚠ 修正(2026-07-11):舊版誤以為「C 把整個畫面清成 COLOR_FRAME(金)再蓋內容」,
+// 於是 dst.Fill(colorBorder) 把整片填成亮黃 → 進遊戲滿版黃(實測黃佔比 ~19%,C 版只
+// ~9%)。實際上 C 的世界地圖**從不清整片為金**:draw_map/draw_sidebar 只畫各自區域,
+// 外圍保持 SDL 初始的**黑底**;金色只是「烤進 sidebar/狀態列圖 + 各處 SDL_FillRect
+// (COLOR_FRAME) 細框線」的窄框帶(實測 C 最外圈=黑、金框帶約 6-7px)。故 Go 版改為
+// 「背景填黑 + 只在 play area 外圈畫 worldFrameBand 寬的金框帶」,內容隨後蓋掉內部,
+// 元件間隙自然露出金色分隔線 —— 這才對齊 C 的結構(見 game.c draw_map/draw_sidebar)。
 var (
 	colorBorder = color.RGBA{0xff, 0xff, 0x55, 0xff}
 	colorStatus = color.RGBA{0x00, 0x00, 0xaa, 0xff}
+	colorOuter  = color.RGBA{0x00, 0x00, 0x00, 0xff} // 外圍黑(對齊 C 未清區)
+)
+
+// 世界地圖「內容區」邊界(320×200 邏輯座標):狀態列/地圖/側欄的外接矩形。
+// 左=mapX(16);上=statusY(8);右=側欄右緣(mapX+perim*mapTileW=256 起、側欄圖 48 寬 → 304);
+// 下=地圖底(mapY+perim*mapTileH=191)。金框帶畫在此矩形外圈 worldFrameBand 寬,再往外是黑。
+const (
+	worldContentL  = mapX                       // 16
+	worldContentT  = statusY                    // 8
+	worldContentR  = mapX + perim*mapTileW + 48 // 304(側欄圖寬 48)
+	worldContentB  = mapY + perim*mapTileH      // 191
+	worldFrameBand = 4                          // 金框帶寬(對齊 C 實測金框 ~4-6px;取 4 收窄亮黃面積)
 )
 
 // worldMapDaysLeft 是狀態列「剩餘天數」暫用的固定值(C: game->days_left)。
@@ -404,9 +422,9 @@ func (s *WorldMapScreen) Draw(dst *ebiten.Image) {
 		ebitenutil.DebugPrint(dst, "world map: land.org 未載入")
 		return
 	}
-	// 外框:整畫面先清成黃(對齊 C 版行為,見上方 colorBorder 註解);地圖/狀態列/
-	// 側欄接著蓋掉內部,四周留白就是黃色邊框,不必個別畫 4 條 FillRect。
-	dst.Fill(colorBorder)
+	// 背景:填黑 + play area 外圈金框帶(取代舊的整片填黃,見 colorBorder 註解);
+	// 地圖/狀態列/側欄隨後蓋掉內部。與所有 chrome 畫面共用同一 drawChromeFrame。
+	drawChromeFrame(dst)
 	// 5×5 viewport,玩家置中,Y 翻轉(對齊 C 版 draw_map:pos.y=(perim-1-j)*h+mapY)。
 	borderX := s.gs.X - radii
 	borderY := s.gs.Y - radii

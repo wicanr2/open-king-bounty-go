@@ -127,7 +127,7 @@ func (s *ChooseSpellScreen) menuLines() []string {
 }
 
 func (s *ChooseSpellScreen) Draw(dst *ebiten.Image) {
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 	drawTopBox(dst, s.assets, "按 'ESC' 離開")
 	drawSidebar(dst, s.gs, 0)
 	if s.mode == chooseSpellResult {

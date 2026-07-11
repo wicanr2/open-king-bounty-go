@@ -209,7 +209,7 @@ func (s *TownScreen) Draw(dst *ebiten.Image) {
 	// 外框:整畫面先清成黃(對齊世界地圖 worldmap.go 的 colorBorder 註解 ——
 	// C 版所有畫面共用同一套 top/left/right/bottom frame 黃色裝飾邊,不是世界地圖
 	// 專屬);頂列/背景/側欄/底部選單框接著蓋掉內部,四周留白就是視覺邊框。
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 	drawTopBox(dst, s.assets, "按 'ESC' 離開")
 	s.drawLocation(dst, frame)
 	drawSidebar(dst, s.gs, frame)

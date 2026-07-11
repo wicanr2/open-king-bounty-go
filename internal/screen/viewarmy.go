@@ -76,7 +76,7 @@ func (s *ViewArmyScreen) Draw(dst *ebiten.Image) {
 	// 不清畫面、疊在既有畫面上(右側 sidebar 欄位仍是前一畫面殘留);本引擎每畫面
 	// 各自全幅重繪(見 internal/app/game.go),無「前一畫面殘留」可疊,故用邊框色
 	// 填滿右側/底部未畫到的區域,是本移植對此差異的忠實近似,非美術走樣。
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 
 	for i := 0; i < 5; i++ {
 		rowY := mapY + i*mapTileH

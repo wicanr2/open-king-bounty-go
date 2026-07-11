@@ -42,6 +42,8 @@ var (
 	recruitRtype      = flag.Int("rtype", 0, "debug:配合 -startrecruit,棲地類型(0=平原 1=森林 2=山丘 3=地下城)")
 	recruitTroop      = flag.Int("recruittroop", 0, "debug:配合 -startrecruit,招募兵種 TroopID")
 	worldSeed         = flag.Uint("seed", uint(gamestate.DefaultWorldSeed), "debug:配合 -starttown/-startclass,指定 salt_spells 等世界生成用的 RNG seed")
+	shotPath          = flag.String("shot", "", "debug:在第 -shotframe 幀把畫面存成此 PNG 後結束(截圖驗證用)")
+	shotFrame         = flag.Int("shotframe", 3, "debug:配合 -shot,第幾幀截圖(預設 3,讓首幀狀態穩定)")
 )
 
 func rootScreen(a *kbdata.Assets) screen.Screen {
@@ -164,7 +166,10 @@ func main() {
 	} else {
 		log.Printf("art theme: none found in %s", *datadir)
 	}
-	bgm.Init(os.DirFS(*datadir)) // BGM(data/music/scenes.ini;缺則靜音)
+	app.ShotPath, app.ShotFrame = *shotPath, *shotFrame // debug 截圖(-shot 空則停用)
+	if *shotPath == "" {
+		bgm.Init(os.DirFS(*datadir)) // BGM(data/music/scenes.ini;缺則靜音);headless 截圖時跳過(無 ALSA 裝置)
+	}
 
 	ebiten.SetWindowSize(app.LogicalW*3, app.LogicalH*3)
 	ebiten.SetWindowTitle("御封戰將 (openkb-go)")

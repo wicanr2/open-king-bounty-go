@@ -24,9 +24,9 @@ import (
 type combatKind int
 
 const (
-	combatDebug  combatKind = iota // debug/截圖用,不做任何戰後世界狀態回寫
-	combatFoe                      // 世界地圖遭遇 foe(對齊 C run_combat mode 0)
-	combatSiege                    // 圍攻城堡(對齊 C run_combat mode 1)
+	combatDebug combatKind = iota // debug/截圖用,不做任何戰後世界狀態回寫
+	combatFoe                     // 世界地圖遭遇 foe(對齊 C run_combat mode 0)
+	combatSiege                   // 圍攻城堡(對齊 C run_combat mode 1)
 )
 
 // combatContext 描述戰鬥來源,供 applyOutcome 做 C run_combat 的戰後結算。
@@ -275,7 +275,7 @@ func (s *CombatScreen) enemyAt(x, y int) (side, id int, ok bool) {
 // turn_count 不是 count)→ 頂部狀態列(對齊 draw_combat_statusbar)。
 func (s *CombatScreen) Draw(dst *ebiten.Image) {
 	c := s.combat
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 
 	// 棋盤地形
 	for y := 0; y < combat.BoardH; y++ {

@@ -35,7 +35,7 @@ func (s *PuzzleScreen) Update(a input.Action) Transition {
 }
 
 func (s *PuzzleScreen) Draw(dst *ebiten.Image) {
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 	drawTopBox(dst, s.assets, "權杖拼圖(按任意鍵離開)")
 	drawSidebar(dst, s.gs, 0)
 	if s.gs == nil {

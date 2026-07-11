@@ -64,7 +64,7 @@ func (s *BridgeScreen) Update(a input.Action) Transition {
 }
 
 func (s *BridgeScreen) Draw(dst *ebiten.Image) {
-	dst.Fill(colorBorder)
+	drawChromeFrame(dst)
 	if s.mode == bridgeModeResult {
 		drawTopBox(dst, s.assets, "按 'ESC' 離開")
 		drawSidebar(dst, s.gs, 0)
