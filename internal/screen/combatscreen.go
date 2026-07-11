@@ -99,9 +99,14 @@ func NewCombatScreenSiege(gs *gamestate.GameState, a *kbdata.Assets, castleID in
 	}
 	c := &combat.Combat{}
 	rng := kbrng.NewGlibc(uint32(castleID + 1))
+	if gs != nil {
+		c.AIEvolved = gs.OptAIMode
+	}
 	combat.PrepareUnitsPlayer(c, 0, gs, a)
 	combat.PrepareUnitsCastle(c, 1, foe, a)
-	c.ResetMatch(a, rng, false)
+	// 圍攻戰(run_combat mode=1)用城堡佈局:castleUmap 佈防守方 + castleOmap 城牆障礙
+	// (對齊 C reset_match 的 castle 分支)。取代先前傳 false 的「無牆平地」佈局。
+	c.ResetMatch(a, rng, true)
 	return &CombatScreen{combat: c, assets: a, rng: rng, ctx: combatContext{kind: combatSiege, castleID: castleID, gsPointer: gs}}
 }
 

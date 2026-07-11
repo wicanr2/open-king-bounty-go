@@ -38,6 +38,25 @@ var pieceSprite *render.Sprite
 // SetPiece 由進入點在載入資產後設定拼圖遮片 sprite。
 func SetPiece(s *render.Sprite) { pieceSprite = s }
 
+// endTiles 是破關動畫(display_cartoon)用的三張 48×34 tile:endpic-2=草地、endpic-3=橋、
+// endpic-4=英雄(對齊 C GR_ENDTILE,subid 0/1/2)。缺檔時 CartoonScreen 直接跳過動畫。
+var endTiles [3]*ebiten.Image
+
+// SetEndTile 由進入點在載入資產後設定第 i 張破關動畫 tile(0=草/1=橋/2=英雄)。
+func SetEndTile(i int, img *ebiten.Image) {
+	if i >= 0 && i < len(endTiles) {
+		endTiles[i] = img
+	}
+}
+
+// EndTile 回傳第 i 張破關動畫 tile(缺則 nil)。
+func EndTile(i int) *ebiten.Image {
+	if i >= 0 && i < len(endTiles) {
+		return endTiles[i]
+	}
+	return nil
+}
+
 // selectArt 是選角畫面的整張背景美術(select-0.png,288×184,不透明,已內建
 // A/B/C/D 立繪標籤,對齊 C 版 GR_SELECT 幀 0)。
 var selectArt *ebiten.Image

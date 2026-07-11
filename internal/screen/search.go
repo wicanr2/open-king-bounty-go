@@ -40,7 +40,7 @@ func (s *SearchScreen) Update(a input.Action) Transition {
 	confirm := a.Kind == input.ActConfirm || (a.Kind == input.ActLetter && a.Rune == 'y')
 	if confirm {
 		if s.gs.AtScepter() {
-			return Replace(NewWinScreen(s.gs, s.assets)) // 找到權杖 → 破關
+			return Replace(NewCartoonScreen(s.gs, s.assets)) // 找到權杖 → 破關過場動畫 → 破關訊息
 		}
 		s.mode = searchFutile
 		return Stay()

@@ -17,10 +17,11 @@ func TestSearch_AtScepterWins(t *testing.T) {
 	s := NewSearchScreen(gs, a)
 	tr := s.Update(input.Letter('y'))
 	if tr.Kind != KindReplace {
-		t.Fatalf("找到權杖搜索應 Replace 成破關畫面,got %v", tr.Kind)
+		t.Fatalf("找到權杖搜索應 Replace 成破關過場,got %v", tr.Kind)
 	}
-	if _, ok := tr.Next.(*WinScreen); !ok {
-		t.Errorf("破關畫面型別 = %T, want *WinScreen", tr.Next)
+	// 找到權杖 → 先進破關過場動畫(CartoonScreen),播完/按鍵才到破關訊息 WinScreen。
+	if _, ok := tr.Next.(*CartoonScreen); !ok {
+		t.Errorf("破關過場型別 = %T, want *CartoonScreen", tr.Next)
 	}
 }
 

@@ -7,9 +7,10 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 本檔是移植的**單一真相清單**(gap analysis)。C 功能函式見 openkb-code/src/game.c。
 
 > **現況摘要(2026-07-11)**:核心 + 進階系統全數移植,**遊戲可從新遊戲玩到通關**;含完整
-> 天數/時間系統(移動耗天·週結算·時限失敗)與 opt_* 六項遊戲調整選項。**剩餘皆屬非阻塞細節**:
-> 圍攻城牆障礙佈局、RNG 逐 seed parity、opening cartoon(free 無素材 N/A)、原生 Genesis ROM
-> 即時抽取管線。以下清單經 2026-07-11 逐條對碼查證清理;若某小節與本摘要或程式碼牴觸,以**程式碼**為準。
+> 天數/時間系統(移動耗天·週結算·時限失敗)、opt_* 六項遊戲調整選項、圍攻城牆佈局、破關過場動畫。
+> **剩餘皆屬非阻塞細節**:RNG 逐 seed parity(演算法忠實,未從第一個 rand 對齊)、原生 Genesis ROM
+> 即時抽取(設計上以預抽 PNG 取代,見 Genesis 小節)。以下清單經 2026-07-11 逐條對碼查證清理;
+> 若某小節與本摘要或程式碼牴觸,以**程式碼**為準。
 
 ## ✅ 已完成
 
@@ -32,7 +33,7 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 | **世界生成(城堡/惡棍/契約起手值)** | salt_villains/repopulate_castle/num_castles(play.c:77-182)+ spawn_game 城堡/契約段(374-478) | gamestate/castlegen.go + castle.go(NewGame 在 saltContinent 四洲之後跑;CastleOwner/CastleTroops/CastleNumbers/Contract 系列欄位,見下方獨立小節;**visit_castle 仍待後續**) |
 | **懸賞契約檢視** | view_contract(game.c:1641-1735) | viewcontract.go(無契約:sidebar.png 幀8 空框 +「你目前沒有懸賞契約！」;有契約:GR_VILLAIN 臉部 4 幀動畫 + STRL_VDESCS 描述文字,%s %s 代入洲名/城堡名;見下方獨立小節的資料溯源紀錄) |
 
-## ✅ 畫面移植(原「剩餘畫面」清單,現幾乎全數完成;僅 display_cartoon = free 無素材 N/A)
+## ✅ 畫面移植(原「剩餘畫面」清單,現全數完成)
 
 ### A. 檢視畫面(主要是顯示既有 gamestate,自足、優先)
 - [x] **view_puzzle** 拼圖(game.c:1392)——已完成(2026-07-10):5×5 拼圖,神器/惡棍掀開露出權杖周邊地圖。世界地圖 'p'。
@@ -40,7 +41,7 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 
 ### B. 地點畫面(多需世界狀態)
 - [x] **visit_castle / visit_own_castle / visit_home_castle** 城堡(2307/2381/2567)——已完成(2026-07-10),見下方獨立小節
-- [x] **lay_siege** 攻城(2520)——已完成(進圍攻戰;勝利奪城已由 combat 戰後 hook 補上;⚠ 僅城牆障礙佈局未做)
+- [x] **lay_siege** 攻城(2520)——✅ 已完成:進圍攻戰、勝利奪城(combat 戰後 hook)、城牆障礙佈局(NewCombatScreenSiege 傳 ResetMatch castle=true → castleUmap 佈防 + castleOmap 城牆)。
 - [x] **audience_with_king** 謁見國王(2130)——已完成(兩頁對話 + 達門檻晉升)
 - [x] **visit_alcove** 魔法密室(2896)——已完成(2026-07-10):大法師 5000 金幣傳授魔法(KnowsMagic)。
 - [x] **visit_telecave** 傳送洞(2973)——已完成(2026-07-10):踩洞口瞬移到成對另一端
@@ -50,7 +51,7 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 
 ### C. 動作 / 系統
 - [x] **run_combat 戰後結算**(game.c:3598)——已完成(2026-07-10):存活寫回、foe 清 tile、
-      圍攻奪城 + 履約、戰敗 temp_death,見下方「combat 戰後 hook」小節。⚠ 圍攻城牆障礙佈局未做。
+      圍攻奪城 + 履約、戰敗 temp_death,見下方「combat 戰後 hook」小節。圍攻城牆障礙佈局已補(見 lay_siege)。
 - [x] **navigate_continent** 航行換洲(1972)——已完成(2026-07-10,見 boat 小節)
 - [x] **dismiss_army / dismiss_troop** 解散部隊(2027/play.c)——已完成(2026-07-10):
       世界地圖 'd',列部隊選解散;最後一支需確認 → temp_death。
@@ -70,12 +71,12 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 AcceptUnitsPlayer/AcceptSquads 寫回兩側存活單位、foe 戰勝清 tile、圍攻奪城 +
 FulfillContract(讓 audience 晉升門檻能達成)、戰敗 TempDeath。新增
 gamestate.FulfillContract/TempDeath、combat.AcceptUnitsPlayer/AcceptSquads、
-kbdata.WorldMap.Set。⚠ 圍攻城牆障礙佈局(combat mode=1 的 castle_umap)未做。
+kbdata.WorldMap.Set。圍攻城牆障礙佈局(castle_umap/omap)已補(ResetMatch castle=true)。
 
 ### D. 開場 / 雜項
 - [x] **display_logo** NWC logo(924)——已完成(2026-07-10):LogoScreen(nwcp.png)→ 標題。
 - [x] **show_credits** 製作名單(706)——已完成(2026-07-10):標題按 'c' → CreditsScreen(credits.txt)。
-- [ ] **display_cartoon** 開場動畫 / 地球(4513)——free 模組無專屬 cartoon 動畫幀(僅 nwcp.png 商標,已用於 logo);低優先,可視為 N/A。
+- [x] **display_cartoon** 破關過場動畫(4513)——✅ 已完成(2026-07-11)。★更正:這是 **win_game 呼叫的破關動畫**(非開場):6×5 草地上第 4 欄長橋、英雄過橋 + 其餘欄位排滿 25 兵種走路動畫(procedural,用 free endpic-2/-3/-4 tile)。`screen/cartoon.go`,由 search/cheat 破關 → CartoonScreen → WinScreen。
 
 ## ✅ 世界狀態(foundational — 解鎖上面多個畫面的真實動作邏輯;現已全數移植)
 
@@ -237,8 +238,8 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
 - 桌面 ffmpeg 截圖驗證四畫面版面忠實;6 個 screen 測試綠。
 - **後續更新**:① 圍攻勝利後奪城(castle_owner=玩家、守軍換玩家駐防、villain_caught)
   **已由後續「combat 戰後 hook」補上**(combatscreen.go applyOutcome:CastleOwner=KBCastlePlayer +
-  FulfillContract);見上方「combat 戰後 hook」小節。**⚠ 仍未做**:② 圍攻城牆障礙佈局(combat
-  mode=1 castle_umap)未建模;③ lay_siege 畫面 C 版疊在世界地圖上(無 draw_location),本移植先清成黃底。
+  FulfillContract);見上方「combat 戰後 hook」小節。② 圍攻城牆障礙佈局(castle_umap/omap)**已補**
+  (2026-07-11,ResetMatch castle=true)。**⚠ 僅剩**:③ lay_siege 進場畫面 C 版疊在世界地圖上(無 draw_location),本移植先清成黃底。
 
 ### boat 系統——已完成(2026-07-10)
 三切片,對齊 C game->boat/boat_x/boat_y/mount/continent_found 世界狀態 + 移動 boat 段
@@ -276,7 +277,7 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
   結局動畫/圖(版權素材)。
 - [x] **view_puzzle / view_minimap / visit_alcove** — ✅ 已完成(2026-07-10)。
 - [x] **end_week 完整化** — ✅ 已完成(2026-07-10 世界增長 + 2026-07-11 整套天數/時間系統,見下方「移植大致完成」段的時間系統小節)。精確 week_id(day-based)、opt_* 選項旗標皆已補齊。
-- [x] **開場 display_logo / show_credits** — ✅ 已完成(2026-07-10)。display_cartoon = free 無素材(N/A)。
+- [x] **開場 display_logo / show_credits** — ✅ 已完成(2026-07-10)。display_cartoon(破關動畫)= ✅ 已完成(見上,screen/cartoon.go)。
 - [x] **戰鬥中神器 Powers** — ✅ 已完成(2026-07-10):PrepareUnitsPlayer 從 ArtifactFound 填 combat.Powers。
 
 ### 移植大致完成(2026-07-10)——剩餘只餘打磨

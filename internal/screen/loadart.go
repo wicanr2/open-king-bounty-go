@@ -42,6 +42,9 @@ const baseTheme = "free"
 // 桌面傳 os.DirFS(datadir),行動傳 embed.FS。必須在遊戲迴圈啟動後(繪圖就緒)呼叫。
 func LoadArt(fsys fs.FS, dir string) {
 	SetFrameArt(nil) // 重置:frame.png 只有版權主題(DOS)有,切到無此檔的主題要清掉殘留
+	for i := 0; i < 3; i++ {
+		SetEndTile(i, nil) // 重置破關動畫 tile(切主題清殘留)
+	}
 	loadArtDir(fsys, baseTheme)
 	if dir != baseTheme {
 		loadArtDir(fsys, dir)
@@ -96,6 +99,12 @@ func loadArtDir(fsys fs.FS, dir string) {
 	// 金框邊框圖(只有版權主題有;缺就維持 nil，drawChromeFrame 退回平面框，不 log 噪音)
 	if art, err := render.LoadPNGTileFS(fsys, p+"frame.png"); err == nil {
 		SetFrameArt(art)
+	}
+	// 破關動畫 tile(endpic-2/-3/-4 = 草/橋/英雄,free 開放美術;缺就跳過動畫,不 log 噪音)。
+	for i, n := range []string{"endpic-2", "endpic-3", "endpic-4"} {
+		if art, err := render.LoadPNGTileFS(fsys, p+n+".png"); err == nil {
+			SetEndTile(i, art)
+		}
 	}
 	if comtiles, err := render.LoadSpriteOpaqueFS(fsys, p+"comtiles.png", 48, 34); err == nil {
 		SetComtiles(comtiles)

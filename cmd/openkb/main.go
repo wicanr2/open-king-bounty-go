@@ -43,6 +43,8 @@ var (
 	startEndWeek      = flag.Bool("startendofweek", false, "debug:直接進週結算畫面(第 N 週,占星+收支,截圖驗證用)")
 	startLose         = flag.Bool("startlose", false, "debug:直接進時間耗盡的遊戲結束畫面(截圖驗證用)")
 	startOptions      = flag.Bool("startoptions", false, "debug:直接進遊戲調整設定畫面(opt_* 選項,截圖驗證用)")
+	startSiege        = flag.Bool("startsiege", false, "debug:直接進圍攻戰(城堡佈局 + 城牆障礙,截圖驗證用)")
+	startCartoon      = flag.Bool("startcartoon", false, "debug:直接進破關過場動畫(英雄過橋,截圖驗證用)")
 	theme             = flag.String("theme", "", "debug:強制起始美術主題(dos/genesis/amiga/free),空=預設偏好序")
 	recruitRtype      = flag.Int("rtype", 0, "debug:配合 -startrecruit,棲地類型(0=平原 1=森林 2=山丘 3=地下城)")
 	recruitTroop      = flag.Int("recruittroop", 0, "debug:配合 -startrecruit,招募兵種 TroopID")
@@ -109,6 +111,17 @@ func rootScreen(a *kbdata.Assets) screen.Screen {
 	if *startOptions {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
 		return screen.NewGameOptionsScreen(gs, a)
+	}
+	if *startSiege {
+		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
+		// 確保城堡 0 有守軍(圍攻對象),供截圖驗證城牆佈局。
+		gs.CastleTroops[0] = [5]int{3, 3, 3, 0, 0}
+		gs.CastleNumbers[0] = [5]int{5, 5, 5, 0, 0}
+		return screen.NewCombatScreenSiege(gs, a, 0)
+	}
+	if *startCartoon {
+		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))
+		return screen.NewCartoonScreen(gs, a)
 	}
 	if *startCastleOwn {
 		gs := gamestate.NewGame(a, "Sir Loin", 0, uint32(*worldSeed))

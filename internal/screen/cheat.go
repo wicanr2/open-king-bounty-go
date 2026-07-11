@@ -81,7 +81,7 @@ func (s *CheatMenuScreen) Update(a input.Action) Transition {
 		return Pop()
 	case input.ActLetter:
 		if a.Rune == 'w' {
-			return Replace(NewWinScreen(s.gs, s.assets))
+			return Replace(NewCartoonScreen(s.gs, s.assets)) // 過場動畫 → 破關訊息
 		}
 		if a.Rune == 'o' {
 			return Push(NewGameOptionsScreen(s.gs, s.assets))
