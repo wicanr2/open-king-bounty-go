@@ -38,11 +38,24 @@ type saveFile struct {
 	State   *gamestate.GameState `json:"state"`
 }
 
-// SaveDir 回傳存檔目錄(使用者可寫目錄下的 openkb/saves),並確保目錄存在。
+// overrideBaseDir 若非空,取代 os.UserConfigDir() 當存檔基底目錄。桌面留空(走
+// os.UserConfigDir);Android/iOS 等 os.UserConfigDir() 會失敗(無 $HOME/$XDG_CONFIG_HOME)
+// 的平台,由殼層(MainActivity → mobile.SetSaveDir)傳入 app 專屬可寫目錄(getFilesDir)。
+var overrideBaseDir string
+
+// SetSaveDir 設定存檔基底目錄,覆蓋預設的 os.UserConfigDir()。行動裝置進入點在遊戲
+// 迴圈啟動前呼叫(見 mobile.SetSaveDir / MainActivity),桌面不呼叫(用系統可寫目錄)。
+func SetSaveDir(dir string) { overrideBaseDir = dir }
+
+// SaveDir 回傳存檔目錄(可寫目錄下的 openkb/saves),並確保目錄存在。
 func SaveDir() (string, error) {
-	base, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("save: 取得使用者設定目錄失敗: %w", err)
+	base := overrideBaseDir
+	if base == "" {
+		var err error
+		base, err = os.UserConfigDir()
+		if err != nil {
+			return "", fmt.Errorf("save: 取得使用者設定目錄失敗(行動裝置需由殼層 SetSaveDir 提供): %w", err)
+		}
 	}
 
 	dir := filepath.Join(base, "openkb", "saves")

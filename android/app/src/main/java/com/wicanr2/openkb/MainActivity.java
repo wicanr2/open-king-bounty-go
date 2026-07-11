@@ -7,6 +7,7 @@ import android.view.Window;
 import android.view.WindowManager;
 
 import com.wicanr2.openkb.mobile.EbitenView;
+import com.wicanr2.openkb.mobile.Mobile;
 
 public class MainActivity extends Activity {
     private EbitenView getEbitenView() {
@@ -38,6 +39,10 @@ public class MainActivity extends Activity {
         // 的 view,沒有 NativeActivity 流程幫忙設 context;不設的話 gomobile 的 RunOnJVM
         // 拿不到 context,ebiten 的 devicescale 查詢失敗回 0 → view 尺寸變 +Inf → 全黑。
         go.Seq.setContext(getApplicationContext());
+        // Android 上 Go 的 os.UserConfigDir() 會失敗(無 $HOME / $XDG_CONFIG_HOME)→ 存讀檔壞掉。
+        // 把 app 私有可寫目錄(getFilesDir,/data/data/<pkg>/files)交給 Go save 層,須在
+        // setContentView(EbitenView 啟動遊戲迴圈)前設好。
+        Mobile.setSaveDir(getFilesDir().getAbsolutePath());
         setContentView(R.layout.activity_main);
         enterImmersive();
     }

@@ -14,8 +14,15 @@ import (
 	"github.com/wicanr2/open-king-bounty-go/internal/bgm"
 	"github.com/wicanr2/open-king-bounty-go/internal/embedded"
 	"github.com/wicanr2/open-king-bounty-go/internal/kbdata"
+	"github.com/wicanr2/open-king-bounty-go/internal/save"
 	"github.com/wicanr2/open-king-bounty-go/internal/screen"
 )
+
+// SetSaveDir sets the writable base directory for save files. On Android os.UserConfigDir
+// fails (no $HOME / $XDG_CONFIG_HOME), so MainActivity must call this in onCreate with
+// getFilesDir().getAbsolutePath() before the game loop starts, or saving/loading fails.
+// ASCII-only doc on purpose (gobind US-ASCII; see package doc).
+func SetSaveDir(dir string) { save.SetSaveDir(dir) }
 
 func init() {
 	// 資料直接從嵌入的 embed.FS 讀(不解壓到檔案系統——Android 的 cwd/temp 唯讀或不可寫)。
