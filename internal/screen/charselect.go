@@ -2,6 +2,7 @@ package screen
 
 import (
 	"image/color"
+	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -68,7 +69,10 @@ func (s *CharSelectScreen) Update(a input.Action) Transition {
 // start 用選定職業建角,進世界地圖。用 RandomWorldSeed() 讓每局的權杖位置 / 敵人
 // 佈置 / 城鎮法術都不同(還原原版「每局隨機、有重玩價值」;見 gamestate/seed.go)。
 func (s *CharSelectScreen) start(class int) Transition {
-	gs := gamestate.NewGame(s.assets, "Sir Loin", class, gamestate.RandomWorldSeed())
+	seed := gamestate.RandomWorldSeed()
+	gs := gamestate.NewGame(s.assets, "Sir Loin", class, seed)
+	// 每局隨機驗證用(logcat/桌面 stderr 皆可見):不同開局應有不同 seed 與權杖埋點。
+	log.Printf("new game: seed=%d scepter=(cont=%d,x=%d,y=%d)", seed, gs.ScepterContinent, gs.ScepterX, gs.ScepterY)
 	return Replace(NewWorldMapScreen(gs, s.assets))
 }
 
