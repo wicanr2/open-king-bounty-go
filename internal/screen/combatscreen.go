@@ -53,10 +53,13 @@ type CombatScreen struct {
 	spellState spellState
 	spellSel   int    // 施法選單目前高亮的法術(0-6)
 	spellID    int    // 已選定要施放的戰鬥法術(0-6)
-	curX, curY int    // 目標游標座標
+	curX, curY int    // 目標游標座標(施法選目標 / 射擊瞄準共用)
 	teleSide   int    // 瞬移術:已選來源單位的 side
 	teleID     int    // 瞬移術:已選來源單位的 id
 	spellMsg   string // 施法結果訊息(頂列顯示)
+
+	shooting bool // 射擊 target mode 進行中(見 combat_shoot.go)
+	tick     int  // 每幀 +1,供射擊準星閃爍用
 }
 
 // NewCombatScreen 佈陣一場玩家 vs 敵方部隊的戰鬥(debug/一般用,不做戰後世界狀態回寫)。
@@ -164,6 +167,16 @@ func NewDebugCombatScreen(gs *gamestate.GameState, a *kbdata.Assets) *CombatScre
 	return NewCombatScreen(gs, a, foe, 1)
 }
 
+// NewDebugShootCombatScreen 同 NewDebugCombatScreen,但把玩家首格換成弓箭手(troop 8,
+// 有 12 發彈藥),並直接進入射擊 target mode——供截圖驗證射擊 UI(準星 + 觸控射擊鈕)。
+// 人數壓在領導力上限內(5)以免變成失控單位而被 AI 接管。
+func NewDebugShootCombatScreen(gs *gamestate.GameState, a *kbdata.Assets) *CombatScreen {
+	gs.Army[0] = gamestate.Squad{TroopID: 8, Count: 5} // 弓箭手
+	s := NewDebugCombatScreen(gs, a)
+	s.enterShoot()
+	return s
+}
+
 // advance 在當前單位行動結束(pass 或 acted)時換到下一個單位/回合。
 func (s *CombatScreen) advance(pass bool) {
 	c := s.combat
@@ -181,6 +194,7 @@ func (s *CombatScreen) advance(pass bool) {
 
 func (s *CombatScreen) Update(a input.Action) Transition {
 	c := s.combat
+	s.tick++ // 準星閃爍用計時(每幀遞增)
 
 	// 已分勝負:任意動作回地圖。
 	if s.result != 0 {
@@ -217,6 +231,11 @@ func (s *CombatScreen) Update(a input.Action) Transition {
 		return s.updateSpell(a)
 	}
 
+	// 射擊 target mode 進行中時,輸入全交給射擊瞄準流程處理(見 combat_shoot.go)。
+	if s.shooting {
+		return s.updateShoot(a)
+	}
+
 	// 玩家側:等指令。
 	dx, dy := 0, 0
 	switch a.Kind {
@@ -232,8 +251,11 @@ func (s *CombatScreen) Update(a input.Action) Transition {
 		s.advance(true) // 待命
 		return Stay()
 	case input.ActLetter:
-		if a.Rune == 'z' {
+		switch a.Rune {
+		case 'z':
 			s.openSpellMenu() // 施放戰鬥法術(對齊 C choose_spell 戰鬥模式)
+		case 's':
+			s.enterShoot() // 遠程射擊(對齊 C unit_try_shoot,鍵位 's');不可射時 enterShoot 內部忽略
 		}
 		return Stay()
 	case input.ActCancel:
@@ -331,6 +353,7 @@ func (s *CombatScreen) Draw(dst *ebiten.Image) {
 
 	s.drawStatusBar(dst)
 	s.drawSpellOverlay(dst) // 施法 UI(選單/目標游標/結果訊息)疊在戰鬥畫面上
+	s.drawShootCursor(dst)  // 射擊瞄準準星 + 提示(見 combat_shoot.go)
 
 	if s.result != 0 && s.assets != nil && s.assets.Font != nil {
 		msg := "勝利!"
@@ -372,6 +395,14 @@ func (s *CombatScreen) drawStatusBar(dst *ebiten.Image) {
 
 func (s *CombatScreen) Keymap() input.Keymap {
 	km := input.Keymap{Directions: true, Confirm: "待命", Cancel: "撤退"}
+
+	// 射擊 target mode:D-pad 移游標、Confirm 發射、Cancel 取消(對齊 pick_target 操作)。
+	if s.shooting {
+		km.Confirm = "射擊"
+		km.Cancel = "取消"
+		return km
+	}
+
 	// 施法中 Confirm 的語意改為「施放/選定」;施法選單/目標選取時提供對應提示。
 	switch s.spellState {
 	case spellMenu:
@@ -382,6 +413,15 @@ func (s *CombatScreen) Keymap() input.Keymap {
 		// 玩家回合(會魔法且本回合未施法)時多一顆施法鈕。
 		if gs := s.playerGS(); gs != nil && gs.KnowsMagic && s.combat.Spells == 0 {
 			km.Letters = []input.LetterItem{{Rune: 'z', Label: "施法"}}
+		}
+		// 可遠攻(有彈藥且未被貼身)時,右下多浮一顆「射擊」鈕(觸控入口)。
+		// 放在確認鈕正上方(y=142),不與撤退/待命(y=168)或 D-pad(左下)重疊。
+		if s.canShootCurrent() {
+			km.Buttons = append(km.Buttons, input.Control{
+				Rect:   input.Rect{X: 288, Y: 142, W: 28, H: 22},
+				Action: input.Letter('s'),
+				Label:  "射擊",
+			})
 		}
 	}
 	return km

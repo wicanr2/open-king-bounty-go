@@ -40,6 +40,8 @@ type Game struct {
 // devicescale: no current JVM),必須延後到遊戲迴圈啟動後的第一幀。
 // touch 為 true 時才畫觸控控制疊層(Android);桌面傳 false 保持畫面與 C openkb 一致。
 func New(root screen.Screen, assets *kbdata.Assets, boot func(), touch bool) *Game {
+	// 觸控模式才在可點的 sidebar 面板畫金色摺角提示(桌面鍵盤模式關,維持與 C 一致)。
+	screen.SetTouchHints(touch)
 	return &Game{mgr: screen.NewManager(root), assets: assets, boot: boot, touch: touch}
 }
 

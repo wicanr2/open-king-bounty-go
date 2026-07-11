@@ -2,9 +2,11 @@ package screen
 
 import (
 	"fmt"
+	"image/color"
 	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/wicanr2/open-king-bounty-go/internal/gamestate"
 	"github.com/wicanr2/open-king-bounty-go/internal/input"
@@ -223,6 +225,21 @@ func (s *TownScreen) Draw(dst *ebiten.Image) {
 		drawBottomFrame(dst, s.assets, s.learnMsg)
 	default:
 		drawBottomFrame(dst, s.assets, s.menuLines())
+		s.drawMenuTapHints(dst) // 觸控模式:A-E 選項行畫細金底線,提示「這幾行可點」
+	}
+}
+
+// drawMenuTapHints 在觸控模式下,於 A-E 各選項行底部畫一條細金線(不蓋文字),
+// 讓玩家看得出「這些選單行可以點」。桌面鍵盤模式(touchHints=false)不畫,維持 C 版
+// 乾淨選單外觀。金線色對齊金框 #e6cf00。
+func (s *TownScreen) drawMenuTapHints(dst *ebiten.Image) {
+	if !touchHints {
+		return
+	}
+	gold := color.RGBA{0xe6, 0xcf, 0x00, 0xb0}
+	for _, r := range townLetterRects() {
+		y := float32(r.Y + r.H - 1)
+		vector.DrawFilledRect(dst, float32(r.X), y, float32(r.W), 1, gold, false)
 	}
 }
 

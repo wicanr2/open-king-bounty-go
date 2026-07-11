@@ -133,6 +133,18 @@ const (
 	worldFrameBand = 4                          // 金框帶寬(對齊 C 實測金框 ~4-6px;取 4 收窄亮黃面積)
 )
 
+// sidebar 五個資訊面板的矩形(邏輯座標),對齊 chrome.go drawSidebar 的堆疊:
+// sx = mapX+perim*mapTileW = 256、y=mapY(21)起每 mapTileH(34)一格、每格 48×34。
+// 世界地圖把「點面板 = 用對應功能」的隱形觸控熱區疊在其中幾個面板上(語意「點什麼看什麼」),
+// 由 Keymap() 提供給 TouchLayout 當 LetterRects,並由 drawSidebarTouchHints 畫可點提示。
+var (
+	sidebarPanelContract = input.Rect{X: 256, Y: 21, W: 48, H: 34}  // 幀8 契約框 → 檢視契約(k)
+	sidebarPanelSiege    = input.Rect{X: 256, Y: 55, W: 48, H: 34}  // 幀9 攻城武器(暫無對應畫面,純資訊)
+	sidebarPanelMagic    = input.Rect{X: 256, Y: 89, W: 48, H: 34}  // 幀10 魔法星 → 施法(z,僅會魔法時)
+	sidebarPanelPuzzle   = input.Rect{X: 256, Y: 123, W: 48, H: 34} // 幀11 拼圖地圖 → 看拼圖(p)
+	sidebarPanelPurse    = input.Rect{X: 256, Y: 157, W: 48, H: 34} // 幀12 錢袋金幣 → 看角色/金幣(c)
+)
+
 // worldMapDaysLeft 是狀態列「剩餘天數」暫用的固定值(C: game->days_left)。
 // GameState 尚未有 days_left 欄位,先寫死,待世界狀態補上後改真值。
 const worldMapDaysLeft = 600
@@ -159,6 +171,14 @@ func walkable(tile byte) bool {
 }
 
 func (s *WorldMapScreen) Update(a input.Action) Transition {
+	// 觸控頂部「選單」鈕 → 疊上系統/動作選單 dialog(存讀檔/軍隊/解散/搜索/地圖/換洲/
+	// 主題/作弊/音樂/標題 都在裡面)。桌面鍵盤不需經此 dialog,仍走下面各快捷鍵分支。
+	if a.Kind == input.ActMenu {
+		if s.gs != nil {
+			return Push(NewSystemMenuScreen(s, s.gs, s.assets))
+		}
+		return Stay()
+	}
 	// 存讀檔:'s' 存進 slot 0,'l' 讀 slot 0。無關乎世界地圖資產是否載入,故放在
 	// nil 檢查之前;結果(成功/失敗)寫進 s.msg,由 Draw 顯示。
 	if a.Kind == input.ActLetter {
@@ -202,6 +222,10 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 		case 'p':
 			// 權杖拼圖(對齊 C KEY_ACT(VIEW_PUZZLE)→view_puzzle)。
 			return Push(NewPuzzleScreen(s.gs, s.assets))
+		case 'k':
+			// 檢視懸賞契約(對齊 C view_contract)。觸控由點右側 sidebar 的「契約」面板觸發
+			// (見 Keymap 的 LetterRects 疊層);無契約時 ViewContractScreen 自行顯示提示。
+			return Push(NewViewContractScreen(s.gs, s.assets))
 		}
 	}
 
@@ -458,6 +482,7 @@ func (s *WorldMapScreen) Draw(dst *ebiten.Image) {
 	frame := (s.drawTick / townFrameDivisor) % 4
 	s.drawTick++
 	drawSidebar(dst, s.gs, frame)
+	s.drawSidebarTouchHints(dst) // 觸控模式:在可點面板角落畫金色摺角提示
 	if s.msg != "" && s.assets.Font != nil {
 		render.DrawText(dst, s.assets.Font, s.msg, mapX, mapY+perim*mapTileH-2, color.RGBA{240, 220, 40, 255})
 	}
@@ -473,8 +498,11 @@ func (s *WorldMapScreen) drawStatusBar(dst *ebiten.Image) {
 	if s.assets == nil || s.assets.Font == nil {
 		return
 	}
-	text := fmt.Sprintf(" 選項 / 操作說明 / 剩餘天數:%d ", worldMapDaysLeft)
-	render.DrawText(dst, s.assets.Font, text, statusX, statusY, color.White)
+	// 「選項 / 操作說明」原是照抄 C 的靜態標籤、Go 版不可互動 → 移除(觸控改由左側
+	// 「選單」鈕入口);只留有意義的「剩餘天數」,靠右畫,把左段讓給選單鈕。
+	text := fmt.Sprintf("剩餘天數:%d ", worldMapDaysLeft)
+	tw := len([]rune(text)) * render.CJKCell
+	render.DrawText(dst, s.assets.Font, text, statusX+statusW-tw, statusY, color.White)
 }
 
 // drawCoins 依 C draw_sidebar 的金幣堆疊邏輯(game.c:1119+ cval 計算):三欄分別代表
@@ -496,28 +524,95 @@ func drawCoins(dst *ebiten.Image, x, y, gold int) {
 	}
 }
 
-func (s *WorldMapScreen) Keymap() input.Keymap {
-	letters := []input.LetterItem{
-		{Rune: 's', Label: "存檔"},
-		{Rune: 'l', Label: "讀檔"},
-		{Rune: 'v', Label: "軍隊"},
-		{Rune: 'c', Label: "角色"},
-		{Rune: 'd', Label: "解散"},
-		{Rune: 'g', Label: "搜索"},
-		{Rune: 'm', Label: "地圖"},
-		{Rune: 'p', Label: "拼圖"},
+// touchHints 為 true 時,世界地圖在「可觸控」的 sidebar 面板角落畫輕量金色摺角標記,
+// 提示玩家該面板可點(僅觸控/行動模式開;桌面鍵盤模式關,維持與 C 一致的畫面)。
+// 由 app.New 依 -touch / 行動裝置設定(見 internal/app/game.go 呼叫 SetTouchHints)。
+var touchHints bool
+
+// SetTouchHints 設定是否在可點的 sidebar 面板畫觸控提示標記(app 層依 touch 模式設定)。
+func SetTouchHints(on bool) { touchHints = on }
+
+var (
+	hintFill = color.RGBA{0x00, 0x00, 0x8c, 0xe6} // 觸控鈕同款深藍(在金色面板框上才顯眼)
+	hintGold = color.RGBA{0xe6, 0xcf, 0x00, 0xff} // 對齊 frame 主金,與觸控鈕金框一致
+	hintDark = color.RGBA{0x00, 0x00, 0x00, 0xcc}
+)
+
+// drawSidebarTouchHints 在可觸控的 sidebar 面板右上角畫小「可點徽章」(深藍底+金框,
+// 沿用觸控鈕的視覺語言),提示該面板可點。只畫角落一小塊、不蓋面板中央的資訊圖,維持
+// C 版 sidebar 外觀。sidebar 面板本身已是金色框,故徽章用深藍底才能在金框上分離出來。
+// 魔法星面板僅會魔法時提示。
+func (s *WorldMapScreen) drawSidebarTouchHints(dst *ebiten.Image) {
+	if !touchHints {
+		return
 	}
-	// 會魔法時多一顆施法鈕(對齊 C 世界地圖施法鍵僅在會魔法時有意義)。
+	panels := []input.Rect{sidebarPanelContract, sidebarPanelPuzzle, sidebarPanelPurse}
+	if s.gs != nil && s.gs.KnowsMagic {
+		panels = append(panels, sidebarPanelMagic)
+	}
+	for _, p := range panels {
+		drawTapBadge(dst, p)
+	}
+}
+
+// drawTapBadge 在矩形右上角畫一個小徽章(深藍底 + 1px 暗邊 + 1px 金框 + 中央金點),
+// 當「此面板可觸控」的提示,與觸控鈕的深藍底/亮金框語言一致。
+func drawTapBadge(dst *ebiten.Image, r input.Rect) {
+	const bw, bh = 12, 8
+	x := float32(r.X + r.W - bw - 1) // 右上角內縮 1px,避開面板金框
+	y := float32(r.Y + 1)
+	vector.DrawFilledRect(dst, x, y, bw, bh, hintFill, false)             // 深藍底
+	strokeRect1pxLocal(dst, x, y, bw, bh, hintDark)                       // 外 1px 暗邊
+	strokeRect1pxLocal(dst, x+1, y+1, bw-2, bh-2, hintGold)               // 內 1px 金框
+	vector.DrawFilledRect(dst, x+bw/2-1, y+bh/2-1, 2, 2, hintGold, false) // 中央金點,遠看是「可點」記號
+}
+
+// strokeRect1pxLocal 用 4 條 1px filled rect 畫脆利邊框(同 render.strokeRect1px,
+// screen 套件內自備一份免跨套件匯出)。
+func strokeRect1pxLocal(dst *ebiten.Image, x, y, w, h float32, c color.RGBA) {
+	vector.DrawFilledRect(dst, x, y, w, 1, c, false)
+	vector.DrawFilledRect(dst, x, y+h-1, w, 1, c, false)
+	vector.DrawFilledRect(dst, x, y, 1, h, c, false)
+	vector.DrawFilledRect(dst, x+w-1, y, 1, h, c, false)
+}
+
+func (s *WorldMapScreen) Keymap() input.Keymap {
+	// 觸控三層佈局:
+	//   ① 主畫面下方只留 D-pad(Directions),不再有整排功能鈕。
+	//   ② 右側 sidebar 的 view 類功能疊成隱形熱區(點面板即看對應內容):錢袋→角色(c)、
+	//      拼圖→拼圖(p)、契約→檢視契約(k)、魔法星→施法(z,僅會魔法時)。LetterRects 給
+	//      對應面板矩形 → TouchLayout 設 Hidden;drawSidebarTouchHints 在角落畫可點徽章。
+	//   ③ 其餘動作(存讀檔/軍隊/解散/搜索/地圖/換洲/主題/作弊/音樂/標題)全收進由頂部
+	//      「選單」鈕(ActMenu)叫出的 SystemMenuScreen dialog——貼近 C 原版「一鍵開選單」。
+	// 桌面鍵盤仍可直接按 s/l/v/c/d/g/m/p/z/n/k/ESC(見 Update),不受本觸控佈局影響。
+	letters := []input.LetterItem{
+		{Rune: 'c', Label: "角色"},
+		{Rune: 'p', Label: "拼圖"},
+		{Rune: 'k', Label: "契約"},
+	}
+	rects := []input.Rect{sidebarPanelPurse, sidebarPanelPuzzle, sidebarPanelContract}
 	if s.gs != nil && s.gs.KnowsMagic {
 		letters = append(letters, input.LetterItem{Rune: 'z', Label: "施法"})
+		rects = append(rects, sidebarPanelMagic)
 	}
-	// 乘船時多一顆「換洲」(對齊 C:navigate_continent 僅 mount==SAIL 可用)。
-	if s.gs != nil && s.gs.Mount == gamestate.KBMountSail {
-		letters = append(letters, input.LetterItem{Rune: 'n', Label: "換洲"})
+	// 頂部「選單」叫出鈕:移到狀態列左段(原「選項/操作說明」的位置,已移除),
+	// 剩餘天數改靠右;兩者不重疊。
+	menuBtn := input.Control{
+		Rect:   input.Rect{X: 16, Y: 1, W: 60, H: 14},
+		Action: input.Action{Kind: input.ActMenu},
+		Label:  "選單",
+	}
+	// 常駐「搜索」鈕:搜索(找權杖埋藏處)是高頻操作,依使用者要求放主畫面免開選單。
+	// 底部中央偏右,避開左下 D-pad(x≤68)與右側 sidebar(x≥256)。
+	searchBtn := input.Control{
+		Rect:   input.Rect{X: 200, Y: 176, W: 52, H: 20},
+		Action: input.Action{Kind: input.ActLetter, Rune: 'g'},
+		Label:  "搜索",
 	}
 	return input.Keymap{
-		Directions: true,
-		Cancel:     "標題",
-		Letters:    letters,
+		Directions:  true,
+		Letters:     letters,
+		LetterRects: rects,
+		Buttons:     []input.Control{menuBtn, searchBtn},
 	}
 }

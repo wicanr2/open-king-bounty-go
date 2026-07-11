@@ -45,14 +45,10 @@ func NewTouchLayout(km Keymap) TouchLayout { return TouchLayout{km: km} }
 func (t TouchLayout) Controls() []Control {
 	var cs []Control
 
-	// 全域系統鍵(觸控裝置無 F8/F12):右上角「主題」切美術主題、其下「作弊」開 debug 選單。
-	// 主題由 app.handleSystem 攔 ActThemeCycle → screen.CycleTheme;作弊由 worldmap 接 ActCheat
-	// → 開 CheatMenuScreen(非遊戲畫面忽略)。放狀態列右端(該處通常無文字)。
-	cs = append(cs,
-		Control{Rect{292, 1, 26, 10}, Action{Kind: ActThemeCycle}, "主題", false},
-		Control{Rect{292, 12, 26, 10}, Action{Kind: ActCheat}, "作弊", false},
-		Control{Rect{292, 23, 26, 10}, Action{Kind: ActMusicToggle}, "音樂", false},
-	)
+	// 系統鍵(主題/作弊/音樂)不再全域浮出:改收進世界地圖專屬的「選單 dialog」
+	// (screen.SystemMenuScreen),由世界地圖頂部一顆叫出鈕(km.Buttons 的 ActMenu)開啟。
+	// 故 Controls() 不再無條件附加系統鍵——城鎮/戰鬥等畫面本就不該有這些次要/開發鍵。
+	// 各畫面若要任意動作鈕,走 km.Buttons(見本函式尾端附加)。
 
 	if t.km.Directions {
 		cs = append(cs,
@@ -68,22 +64,27 @@ func (t TouchLayout) Controls() []Control {
 	if t.km.Cancel != "" {
 		cs = append(cs, Control{Rect{256, 168, 28, 22}, Action{Kind: ActCancel}, t.km.Cancel, false})
 	}
-	// 情境字母列。兩種佈局:
-	//   (a) 若 Keymap 提供 LetterRects(選單型畫面,如城鎮):字母熱區用畫面既有選單
-	//       各行的矩形,設 Hidden(不另畫按鈕),點選單那一行即選該項——對齊 C 選單。
-	//   (b) 否則(如選角):在下方中央排一排可見按鈕,每顆 30 寬。
-	// 每列最多容納數(x=82 起、每顆 32 寬):(320-82)/32 = 7 顆。超過的溢出到「上一排」
-	// (y 往上 22),不再像舊版 break 丟掉——否則第 8 顆(如世界地圖的「拼圖」p)在觸控上
-	// 永遠不可達。見 docs/theme-switching-plan.md 附帶發現。
+	// 情境字母列。每顆字母是「隱形疊在畫面既有視覺上的熱區」或「下方可見按鈕」二選一,
+	// 由 LetterRects[i] 決定(逐顆,可混用):
+	//   (a) LetterRects[i] 有效(W>0):字母熱區用該矩形、設 Hidden(不另畫按鈕),點畫面
+	//       既有視覺(選單那一行 / sidebar 面板)即命中該字母——對齊 C 選單的乾淨外觀,
+	//       也是「功能疊到 sidebar 面板」的做法(如世界地圖:錢袋面板→角色、拼圖面板→拼圖)。
+	//   (b) LetterRects[i] 未提供或為零值(W==0):在下方中央排一顆可見按鈕(每顆 30 寬)。
+	// 下方可見按鈕用獨立計數 bottomIdx 排位,不受被疊到 sidebar 的隱形熱區影響——這樣同一
+	// 畫面可「部分疊 sidebar、部分留下方主排」而下方那排仍緊密無縫。每列最多容納數
+	// (x=82 起、每顆 32 寬):(320-82)/32 = 7 顆;超過溢出到「上一排」(y 往上 22),
+	// 不像舊版 break 丟掉——否則溢出的字母在觸控上永遠不可達。見 docs/theme-switching-plan.md。
 	const lx0, lgap, lw, ly0, lrow = 82, 32, 30, 150, 22
 	perRow := (screenW - lx0) / lgap
+	bottomIdx := 0
 	for i, it := range t.km.Letters {
-		if i < len(t.km.LetterRects) {
+		if i < len(t.km.LetterRects) && t.km.LetterRects[i].W > 0 {
 			cs = append(cs, Control{t.km.LetterRects[i], Letter(it.Rune), it.Label, true})
 			continue
 		}
-		col := i % perRow
-		row := i / perRow
+		col := bottomIdx % perRow
+		row := bottomIdx / perRow
+		bottomIdx++
 		cs = append(cs, Control{Rect{lx0 + col*lgap, ly0 - row*lrow, lw, 20}, Letter(it.Rune), it.Label, false})
 	}
 	if t.km.YesNo {
@@ -92,6 +93,9 @@ func (t TouchLayout) Controls() []Control {
 			Control{Rect{170, 150, 40, 20}, Action{Kind: ActNo}, "否", false},
 		)
 	}
+	// 畫面自訂按鈕(任意 Action)原樣附加在最後。呼叫端自行決定其在清單中的相對順序
+	// (Resolve 回傳第一個命中者;如 dialog 把各功能鈕排在前、全螢幕關閉熱區排最後)。
+	cs = append(cs, t.km.Buttons...)
 	return cs
 }
 

@@ -62,26 +62,91 @@ func TestWorldMapScreen_MoveWritesGameState(t *testing.T) {
 	}
 }
 
-// TestWorldMapScreen_KeymapHasSaveLoadLetters 驗證 Keymap 的情境字母列含 's'(存檔)
-// 與 'l'(讀檔),讓觸控層能浮出對應按鈕。
-func TestWorldMapScreen_KeymapHasSaveLoadLetters(t *testing.T) {
+// TestWorldMapScreen_KeymapThreeLayer 驗證觸控三層佈局:主畫面 Keymap 只有 D-pad +
+// sidebar view 類熱區(c/p/k)+ 頂部「選單」叫出鈕(ActMenu);存讀檔等動作已移出主畫面
+// (改到 SystemMenuScreen dialog),故 Keymap.Letters 不再含 's'/'l'/'v' 等。
+func TestWorldMapScreen_KeymapThreeLayer(t *testing.T) {
 	s, _, _ := newTestWorldMapScreen(t)
 	km := s.Keymap()
 
-	var hasSave, hasLoad bool
+	if !km.Directions {
+		t.Error("世界地圖應保留 D-pad(Directions)")
+	}
+	// sidebar view 類熱區:c/p/k(角色/拼圖/契約),各有對應 LetterRects。
+	want := map[rune]bool{'c': false, 'p': false, 'k': false}
 	for _, li := range km.Letters {
-		if li.Rune == 's' {
-			hasSave = true
+		if _, ok := want[li.Rune]; ok {
+			want[li.Rune] = true
 		}
-		if li.Rune == 'l' {
-			hasLoad = true
+		if li.Rune == 's' || li.Rune == 'l' || li.Rune == 'v' {
+			t.Errorf("主畫面 Keymap 不應再含 %q(已移入選單 dialog)", li.Rune)
 		}
 	}
-	if !hasSave {
-		t.Error("Keymap.Letters 缺少 's'(存檔)")
+	for r, got := range want {
+		if !got {
+			t.Errorf("Keymap.Letters 缺少 sidebar view 熱區 %q", r)
+		}
 	}
-	if !hasLoad {
-		t.Error("Keymap.Letters 缺少 'l'(讀檔)")
+	if len(km.LetterRects) != len(km.Letters) {
+		t.Errorf("LetterRects(%d)應與 Letters(%d)等長", len(km.LetterRects), len(km.Letters))
+	}
+	// 頂部「選單」叫出鈕:一顆 ActMenu Button。
+	var hasMenu bool
+	for _, b := range km.Buttons {
+		if b.Action.Kind == input.ActMenu {
+			hasMenu = true
+		}
+	}
+	if !hasMenu {
+		t.Error("Keymap.Buttons 缺少頂部「選單」叫出鈕(ActMenu)")
+	}
+	// 按 ActMenu → 疊上 SystemMenuScreen。
+	if tr := s.Update(input.Action{Kind: input.ActMenu}); tr.Kind != KindPush {
+		t.Fatalf("按選單鈕 Kind = %v, want KindPush", tr.Kind)
+	} else if _, ok := tr.Next.(*SystemMenuScreen); !ok {
+		t.Errorf("選單鈕 Next 型別 = %T, want *SystemMenuScreen", tr.Next)
+	}
+}
+
+// TestSystemMenuScreen_ActionsAndClose 驗證選單 dialog:各動作鈕解析成正確 Action、可命中,
+// 且點面板外(全螢幕熱區)送 ActCancel → Pop 關閉。
+func TestSystemMenuScreen_ActionsAndClose(t *testing.T) {
+	s, gs, a := newTestWorldMapScreen(t)
+	dlg := NewSystemMenuScreen(s, gs, a)
+	km := dlg.Keymap()
+	l := input.NewTouchLayout(km)
+
+	// dialog 各鈕(存讀檔/軍隊/解散/搜索/地圖/主題/作弊/音樂/標題)都在。
+	wantLetters := map[rune]bool{'s': false, 'l': false, 'v': false, 'd': false, 'g': false, 'm': false, 'q': false}
+	var hasTheme, hasCheat, hasMusic bool
+	for _, b := range km.Buttons {
+		switch b.Action.Kind {
+		case input.ActLetter:
+			if _, ok := wantLetters[b.Action.Rune]; ok {
+				wantLetters[b.Action.Rune] = true
+			}
+		case input.ActThemeCycle:
+			hasTheme = true
+		case input.ActCheat:
+			hasCheat = true
+		case input.ActMusicToggle:
+			hasMusic = true
+		}
+	}
+	for r, got := range wantLetters {
+		if !got {
+			t.Errorf("dialog 缺少動作鈕 %q", r)
+		}
+	}
+	if !hasTheme || !hasCheat || !hasMusic {
+		t.Errorf("dialog 缺少系統鈕 主題=%v 作弊=%v 音樂=%v", hasTheme, hasCheat, hasMusic)
+	}
+	// 點面板外(左上遠離任何鈕)→ ActCancel;Update(ActCancel) → Pop 關閉。
+	if act := l.Resolve(input.Tap{X: 6, Y: 190}); act.Kind != input.ActCancel {
+		t.Errorf("點面板外 → %d, want ActCancel", act.Kind)
+	}
+	if tr := dlg.Update(input.Action{Kind: input.ActCancel}); tr.Kind != KindPop {
+		t.Errorf("dialog ActCancel Kind = %v, want KindPop", tr.Kind)
 	}
 }
 

@@ -85,4 +85,10 @@ type Keymap struct {
 	YesNo  bool     // 是非兩鈕
 	Scroll bool     // 清單捲動(PageUp/Down)
 	System []Action // 收進 ☰ 的系統項(F8/F9/F10…)
+
+	// Buttons 是畫面自訂的觸控按鈕:各自帶任意 Action(不限方向/確認/字母),由 Controls()
+	// 原樣附加到控制清單。可設 Hidden 只當隱形熱區(畫面自己畫視覺,如 SystemMenuScreen
+	// dialog 自繪按鈕 + 用這些矩形收命中)。用於「一顆鈕開選單」「dialog 內任意動作鈕」
+	// 「世界地圖頂部叫出選單鈕(ActMenu)」等,現有 Directions/Confirm/Cancel/Letters 表達不了的按鈕。
+	Buttons []Control
 }
