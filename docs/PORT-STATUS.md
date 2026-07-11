@@ -344,9 +344,13 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
       (commit 82c462b)。demo 用 mobile.go demoWorldMap 已 revert(未 commit)。
       **配樂**:adb screenrecord 不錄音,後製用 ffmpeg 混入 FM Towns 標題主題(`kb02.ogg`,首尾淡入淡出);
       版權音樂、個人 promo 用勿公開散布。
-- [ ] **音訊 / 音樂移植**(Go 版尚未做):C 版有 bgm.c(SDL2_mixer,場景循環 OGG,F9 切換);Go/Ebiten
-      移植目前**無音訊**(F9 ActMusicToggle 僅 stub,同主題切換當初)。可用 ebiten/audio 播 OGG +
-      場景對照(參 C `music/fmtowns/scenes.ini`)。影片配樂是後製混入、非遊戲內發聲。
+- [x] **音訊 / 音樂移植**——✅ 完成(2026-07-11,commit d947a3d):`internal/bgm`(ebiten/audio + vorbis
+      循環)依畫面音樂場景循環播 OGG,對齊 C bgm.c 的 `scenes.ini`。各畫面實作 `bgm.Scener` 宣告場景
+      (worldmap=field1/combat=combat/town=town/castle/siege/title/win);app 每幀切曲;F9 + 觸控「音樂」鈕
+      靜音。9 首 FM Towns OGG 內建於 `data/music/`(gitignore,版權)。Android 模擬器實測:APK 開機
+      無 crash、音樂鈕出現;桌面 headless 亦不崩。⚠ 實機發聲需真裝置(docker 模擬器 -no-audio 聽不到;
+      adb screenrecord 也不錄音 → 影片配樂仍為後製混入,但曲目=遊戲實際 title BGM)。
+      桌面 build 需 `libasound2-dev`(oto/v3 ALSA 後端);Android 用其自身音訊後端。
 - [x] **Genesis 主題抽取**——✅ 完成(2026-07-10):`scripts/extract-genesis-theme.sh`(md-rom.c
       MD_Resolve dumper,SDL2 + env hook stub)→ `data/genesis/`(44 張:tileset+25 兵種+17 惡棍)。
       桌面 Xvfb 驗證世界地圖 + 戰鬥 Genesis 美術正確、兵種白底去背正確。UI/portrait/logo → free 補
