@@ -68,6 +68,11 @@ func loadArtDir(fsys fs.FS, dir string) {
 	} else {
 		log.Printf("load sidebar [%s]: %v", dir, err)
 	}
+	if piece, err := render.LoadSpriteOpaqueFS(fsys, p+"piece.png", 9, 6); err == nil {
+		SetPiece(piece)
+	} else {
+		log.Printf("load piece [%s]: %v", dir, err)
+	}
 	if coins, err := render.LoadSpriteOpaqueFS(fsys, p+"coins.png", 16, 5); err == nil {
 		SetCoins(coins)
 	} else {

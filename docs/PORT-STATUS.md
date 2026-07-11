@@ -292,7 +292,10 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
 - ~~主題切換 toast 提示~~ ✅ 已完成(2026-07-11):`internal/app/toast.go`——切美術主題
   (F8/☰)/切音樂(F9/音樂鈕)顯示置中提示(「主題:Amiga」「音樂:開/關」),深藍底金框,
   ~1.8s 自動消失;-toast 旗標截圖驗證。
-- 剩:sidebar 拼圖 piece 疊圖(需 artifact/villain 世界狀態)、end_week 完整化(皆次要)。
+- ~~sidebar 拼圖 piece 疊圖~~ ✅ 完成(2026-07-11):`chrome.go drawPuzzlePieces`——側欄拼圖框
+  (256,123,48,34)疊 5×5 `piece.png`(9×6,內縮 2px,對齊 C draw_sidebar game.c:1171),
+  已尋神器/捕惡棍的格掀開(共用 `PuzzleOpened`,已測),隨破關逐格揭開;桌面截圖驗證滿格佈局。
+- 剩:end_week 完整化(次要)。
 - 精確 week_id / opt_* gameplay 旗標、read_signpost 以外的細節音效/動畫。
 - RNG 逐 seed parity(演算法忠實,但未從第一個 rand() 起對齊 C,見 NewGame 註記)。
 - Android 模擬器整合驗收新系統(桌面 ffmpeg 已驗關鍵畫面)。
@@ -338,8 +341,12 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
 - [x] **主題設定持久化**——✅ 完成(2026-07-11):`internal/save/settings.go`(openkb/settings.json,
       與存檔同 base)+ loadart.go(`CycleTheme` 寫偏好、`InitThemes` 起始套用 `themeStartIndex`);
       `-theme` debug 覆寫但不寫偏好(不污染)。桌面端到端驗證(無檔→dos / amiga→amiga /
-      genesis→genesis / -theme free 覆寫但偏好維持)。⚠ Android 走同一 SetSaveDir override,
-      模擬器最終驗收待跑(併入既有「Android 模擬器整合驗收新系統」)。
+      genesis→genesis / -theme free 覆寫但偏好維持)。
+- [x] **Android 模擬器驗收(城堡修正 / toast / 持久化)**——✅ 完成(2026-07-11):重建 APK
+      裝進 android-34 x86_64 模擬器,實機驗:① 城堡在 DOS + Genesis 主題皆完整(跨主題)
+      ② 點選單→主題鈕顯示金框 toast「主題:Genesis」+ 即時換主題 ③ 切主題後
+      settings.json=`{"theme":"genesis"}` 落地、force-stop 重啟後 logcat `art theme: genesis`
+      (非預設 dos)、世界地圖視覺維持 Genesis → 持久化跨重啟生效。
 - worldmap 拼圖 p 觸控 —— ✅ 已修(見上,82c462b + 三層觸控)。
 
 ## 作弊選單(F12 / 觸控「作弊」)—— ✅ 完成(2026-07-10)

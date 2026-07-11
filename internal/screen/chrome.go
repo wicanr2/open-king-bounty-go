@@ -65,10 +65,30 @@ func drawSidebar(dst *ebiten.Image, gs *gamestate.GameState, frame int) {
 	}
 	y += mapTileH
 	sidebarSprite.DrawFrame(dst, 11, sx, y)
+	drawPuzzlePieces(dst, gs, sx, y)
 	y += mapTileH
 	sidebarSprite.DrawFrame(dst, 12, sx, y)
 	if gs != nil {
 		drawCoins(dst, sx, y, gs.Gold)
+	}
+}
+
+// drawPuzzlePieces 在側欄拼圖框(px,py,48×34)上疊 5×5 遮片(對齊 C draw_sidebar
+// game.c:1171-1188):每格由一件神器/一名惡棍遮住,已尋得神器 / 已捕獲該惡棍即掀開該格
+// (不畫遮片,露出框內拼圖圖),其餘蓋上 piece.png(9×6,內縮 2px,對齊 C 的 2*zoom)。
+// 隨破關進度逐格揭開。gs / pieceSprite 缺時整框保持遮蓋(不 panic)。
+func drawPuzzlePieces(dst *ebiten.Image, gs *gamestate.GameState, px, py int) {
+	if pieceSprite == nil || gs == nil {
+		return
+	}
+	const pw, ph, inset = 9, 6, 2 // piece.png 尺寸 + C 的 2*zoom 內縮(邏輯層 zoom=1)
+	for j := 0; j < gamestate.PuzzleH; j++ {
+		for i := 0; i < gamestate.PuzzleW; i++ {
+			if gs.PuzzleOpened(i, j) {
+				continue // 已掀開(神器已尋得 / 惡棍已捕獲)→ 不遮
+			}
+			pieceSprite.DrawFrame(dst, 0, px+inset+i*pw, py+inset+j*ph)
+		}
 	}
 }
 

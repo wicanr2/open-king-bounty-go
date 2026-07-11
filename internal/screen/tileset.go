@@ -31,6 +31,13 @@ var coinsSprite *render.Sprite
 // SetCoins 由進入點在載入資產後設定金幣 sprite。
 func SetCoins(s *render.Sprite) { coinsSprite = s }
 
+// pieceSprite 是側欄拼圖框上的遮片(piece.png,單幀 9×6,不去背):蓋在尚未由「捕獲惡棍
+// /尋得神器」掀開的 5×5 拼圖格上(對齊 C GR_PIECE,draw_sidebar game.c:1171)。
+var pieceSprite *render.Sprite
+
+// SetPiece 由進入點在載入資產後設定拼圖遮片 sprite。
+func SetPiece(s *render.Sprite) { pieceSprite = s }
+
 // selectArt 是選角畫面的整張背景美術(select-0.png,288×184,不透明,已內建
 // A/B/C/D 立繪標籤,對齊 C 版 GR_SELECT 幀 0)。
 var selectArt *ebiten.Image
