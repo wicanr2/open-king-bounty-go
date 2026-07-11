@@ -15,6 +15,7 @@ import (
 	"log"
 
 	"github.com/wicanr2/open-king-bounty-go/internal/render"
+	"github.com/wicanr2/open-king-bounty-go/internal/save"
 )
 
 // portraitFiles 是四職業立繪檔名(view_character 用),index = 職業,對齊桌面/行動載入。
@@ -156,8 +157,28 @@ func InitThemes(fsys fs.FS, order []string) string {
 	if len(themeMods) == 0 {
 		return ""
 	}
+	// 套用上次玩家選的主題偏好(save/settings.json;由 CycleTheme 寫入)。找不到 / 不在
+	// 可用清單就維持預設(themeMods[0]),best-effort:讀設定失敗不阻擋啟動。只在此決定起始
+	// index,LoadArt 只跑一次(不先載預設再載偏好)。debug 的 -theme 由 main.go 隨後 SetActiveTheme
+	// 覆寫(SetActiveTheme 不寫偏好,故 debug run 不污染玩家設定)。
+	if s, err := save.LoadSettings(); err == nil {
+		themeActive = themeStartIndex(themeMods, s.Theme)
+	}
 	LoadArt(fsys, themeMods[themeActive])
 	return themeMods[themeActive]
+}
+
+// themeStartIndex 回傳起始主題 index:偏好 pref 若在 mods 中則用其 index,否則回 0(預設=
+// 偏好序第一個)。純邏輯供單元測試(不觸發 LoadArt/建圖)。
+func themeStartIndex(mods []string, pref string) int {
+	if pref != "" {
+		for i, m := range mods {
+			if m == pref {
+				return i
+			}
+		}
+	}
+	return 0
 }
 
 // resolveThemes 過濾偏好序 order,只留下實際內建(該 dir 有 tileseta.png)的美術模組,
@@ -180,6 +201,10 @@ func CycleTheme() string {
 	}
 	themeActive = (themeActive + 1) % len(themeMods)
 	LoadArt(themeFS, themeMods[themeActive])
+	// 記住玩家選擇,下次啟動沿用(best-effort:寫入失敗只記 log,不影響切換本身)。
+	if err := save.SaveSettings(save.Settings{Theme: themeMods[themeActive]}); err != nil {
+		log.Printf("theme: 儲存主題偏好失敗: %v", err)
+	}
 	return themeMods[themeActive]
 }
 

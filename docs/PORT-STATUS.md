@@ -292,8 +292,7 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
 - ~~主題切換 toast 提示~~ ✅ 已完成(2026-07-11):`internal/app/toast.go`——切美術主題
   (F8/☰)/切音樂(F9/音樂鈕)顯示置中提示(「主題:Amiga」「音樂:開/關」),深藍底金框,
   ~1.8s 自動消失;-toast 旗標截圖驗證。
-- 剩:sidebar 拼圖 piece 疊圖(需 artifact/villain 世界狀態)、主題設定持久化、end_week
-  完整化(皆次要)。
+- 剩:sidebar 拼圖 piece 疊圖(需 artifact/villain 世界狀態)、end_week 完整化(皆次要)。
 - 精確 week_id / opt_* gameplay 旗標、read_signpost 以外的細節音效/動畫。
 - RNG 逐 seed parity(演算法忠實,但未從第一個 rand() 起對齊 C,見 NewGame 註記)。
 - Android 模擬器整合驗收新系統(桌面 ffmpeg 已驗關鍵畫面)。
@@ -336,7 +335,12 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
       主題/作弊鈕與新 atlas 字集均正確渲染。
 - [ ] **Genesis 主題**:`kb.bin` ROM 走 `md-rom.c`(不同管線,且 C 版僅 troop/villain/world,其餘回退 free)。
 - [x] **切換 toast 提示**——✅ 完成(2026-07-11,`internal/app/toast.go`):切主題/音樂顯示置中金框提示。
-- [ ]（選用）主題設定持久化(切主題後跨重啟記憶);worldmap 拼圖 p 觸控 —— ✅ 已修(見上,82c462b + 三層觸控)。
+- [x] **主題設定持久化**——✅ 完成(2026-07-11):`internal/save/settings.go`(openkb/settings.json,
+      與存檔同 base)+ loadart.go(`CycleTheme` 寫偏好、`InitThemes` 起始套用 `themeStartIndex`);
+      `-theme` debug 覆寫但不寫偏好(不污染)。桌面端到端驗證(無檔→dos / amiga→amiga /
+      genesis→genesis / -theme free 覆寫但偏好維持)。⚠ Android 走同一 SetSaveDir override,
+      模擬器最終驗收待跑(併入既有「Android 模擬器整合驗收新系統」)。
+- worldmap 拼圖 p 觸控 —— ✅ 已修(見上,82c462b + 三層觸控)。
 
 ## 作弊選單(F12 / 觸控「作弊」)—— ✅ 完成(2026-07-10)
 

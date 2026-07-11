@@ -45,6 +45,26 @@ func TestResolveThemes_NoneExist(t *testing.T) {
 	}
 }
 
+// TestThemeStartIndex 驗證起始主題 index 選擇(持久化偏好套用邏輯,不觸發 LoadArt/建圖)。
+func TestThemeStartIndex(t *testing.T) {
+	mods := []string{"dos", "amiga", "free"}
+	cases := []struct {
+		pref string
+		want int
+	}{
+		{"", 0},        // 無偏好 → 預設(第一個 dos)
+		{"dos", 0},     // 偏好=預設
+		{"amiga", 1},   // 偏好在中間
+		{"free", 2},    // 偏好在末尾
+		{"genesis", 0}, // 偏好不在可用清單(未內建)→ 退回預設
+	}
+	for _, c := range cases {
+		if got := themeStartIndex(mods, c.pref); got != c.want {
+			t.Errorf("themeStartIndex(%v, %q) = %d, want %d", mods, c.pref, got, c.want)
+		}
+	}
+}
+
 // TestThemeCycleIndex 驗證循環索引邏輯(不觸發 LoadArt/建圖):直接操作套件級狀態。
 func TestThemeCycleIndex(t *testing.T) {
 	// 保存並還原全域狀態,避免污染其他測試。
