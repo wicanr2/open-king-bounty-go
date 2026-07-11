@@ -34,7 +34,19 @@ type GameState struct {
 
 	Army [5]Squad // 隊伍五格(C: player_troops[5] + player_numbers[5] 兩個 parallel array 合併)
 
-	Week int // 已過週數;end_week 每次遞增,用於「每 4 週補農夫」判定(C: week_id = passed_days/WEEK_DAYS)
+	Week int // 已過週數;end_week 每次遞增,用於「每 4 週補農夫」判定(= WeekID() day-based,兩者一致)
+
+	// 天數/時間系統(對齊 C days_left/steps_left/difficulty,play.c:398):移動耗一步,步盡過一天,
+	// 每 WeekDays(5)天過一週 → 觸發週結算(EndWeek + 顯示畫面);days_left 歸零 = 時間耗盡失敗。
+	Difficulty int // 難度 index(0-3);決定起手 DaysLeft(daysPerDifficulty)。目前固定 1=Normal(600 天)
+	DaysLeft   int // 剩餘天數(C days_left);歸零 = 遊戲失敗
+	StepsLeft  int // 本日剩餘步數(C steps_left,起始 DaySteps=40);移動一格耗一步,盡則過天
+
+	// 週界剛過、待顯示「第 N 週 收支」畫面時的暫存(transient,不入存檔):供世界地圖 Update
+	// 在踩城鎮/城堡等 Push 返回後補顯示週結算(單步移動至多跨一個週界,故單一暫存即可)。
+	PendingWeek         bool `json:"-"` // true = 有一場週結算待顯示
+	PendingWeekCreature int  `json:"-"` // 待顯示週結算的本週生物 id
+	PendingWeekGold     int  `json:"-"` // 週結算前的金幣(供收支表「現有」欄)
 
 	// 失竊權杖(破關目標)位置,對應 C game->scepter_continent/scepter_x/scepter_y。
 	// 由 NewGame 隨機埋在某洲的某片草地(PlaceScepter);玩家走到該格搜索即獲勝。

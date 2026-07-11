@@ -145,10 +145,6 @@ var (
 	sidebarPanelPurse    = input.Rect{X: 256, Y: 157, W: 48, H: 34} // 幀12 錢袋金幣 → 看角色/金幣(c)
 )
 
-// worldMapDaysLeft 是狀態列「剩餘天數」暫用的固定值(C: game->days_left)。
-// GameState 尚未有 days_left 欄位,先寫死,待世界狀態補上後改真值。
-const worldMapDaysLeft = 600
-
 // WorldMapScreen 是世界地圖:顯示 land.org 的 tile(暫以色塊分類)、玩家可走動、踩城鎮進城。
 type WorldMapScreen struct {
 	gs     *gamestate.GameState
@@ -171,6 +167,12 @@ func walkable(tile byte) bool {
 }
 
 func (s *WorldMapScreen) Update(a input.Action) Transition {
+	// 補顯示待處理的週結算:踩城鎮/城堡等 Push 返回後、或上一步在開闊地跨週界時設下。
+	// 每步至多跨一個週界,故單一 pending 即可;任意輸入觸發時先消化再處理該輸入。
+	if s.gs != nil && s.gs.PendingWeek {
+		s.gs.PendingWeek = false
+		return Push(NewEndOfWeekScreen(s.gs, s.assets, s.gs.PendingWeekCreature, s.gs.PendingWeekGold))
+	}
 	// 觸控頂部「選單」鈕 → 疊上系統/動作選單 dialog(存讀檔/軍隊/解散/搜索/地圖/換洲/
 	// 主題/作弊/音樂/標題 都在裡面)。桌面鍵盤不需經此 dialog,仍走下面各快捷鍵分支。
 	if a.Kind == input.ActMenu {
@@ -291,6 +293,20 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 			s.gs.BoatX, s.gs.BoatY = lastX, lastY
 		}
 	}
+	// 移動耗一步(對齊 C game.c:6945-6969):停時優先、否則扣步;步數耗盡過一天,跨週界
+	// (每 WeekDays 天)觸發週結算,天數歸零則時間耗盡失敗。週結算先跑 EndWeek(世界增長)
+	// 得本週生物,再以 PendingWeek 排入顯示——若本步同時踩到城鎮/城堡等(下方 Push),
+	// 週結算畫面留待該畫面關閉、回世界地圖時由 Update 開頭補顯示;否則在本函式末尾即時顯示。
+	beforeGold := s.gs.Gold
+	if _, weekEnded := s.gs.SpendStep(); weekEnded {
+		creature := s.gs.EndWeek(s.assets, kbrng.NewGlibc(uint32(s.gs.PassedDays()+1)))
+		s.gs.PendingWeek = true
+		s.gs.PendingWeekCreature = creature
+		s.gs.PendingWeekGold = beforeGold
+	}
+	if s.gs.DaysLeft <= 0 {
+		return Push(NewLoseScreen(s.gs, s.assets)) // 時間耗盡:遊戲結束(優先於一切互動)
+	}
 	// 踩到城鎮 → 進城(疊上 TownScreen,離開後回地圖)
 	if tile == kbdata.TileTown {
 		townID := 0
@@ -377,6 +393,11 @@ func (s *WorldMapScreen) Update(a input.Action) Transition {
 			return Stay()
 		}
 		return Push(NewRecruitScreen(s.gs, s.assets, cont, dwellingID, rtype))
+	}
+	// 開闊地移動:若本步剛跨過週界(上面設了 PendingWeek),即時顯示週結算(不必等下次輸入)。
+	if s.gs.PendingWeek {
+		s.gs.PendingWeek = false
+		return Push(NewEndOfWeekScreen(s.gs, s.assets, s.gs.PendingWeekCreature, s.gs.PendingWeekGold))
 	}
 	return Stay()
 }
@@ -500,7 +521,11 @@ func (s *WorldMapScreen) drawStatusBar(dst *ebiten.Image) {
 	}
 	// 「選項 / 操作說明」原是照抄 C 的靜態標籤、Go 版不可互動 → 移除(觸控改由左側
 	// 「選單」鈕入口);只留有意義的「剩餘天數」,靠右畫,把左段讓給選單鈕。
-	text := fmt.Sprintf("剩餘天數:%d ", worldMapDaysLeft)
+	days := 0
+	if s.gs != nil {
+		days = s.gs.DaysLeft
+	}
+	text := fmt.Sprintf("剩餘天數:%d ", days)
 	tw := len([]rune(text)) * render.CJKCell
 	render.DrawText(dst, s.assets.Font, text, statusX+statusW-tw, statusY, color.White)
 }

@@ -58,10 +58,18 @@ func (s *NavigateContinentScreen) sail(idx int) Transition {
 	if idx < 0 || idx >= len(s.options) || s.gs == nil {
 		return Stay()
 	}
+	beforeGold := s.gs.Gold
 	s.gs.SailTo(s.assets, s.options[idx].id)
-	// 對齊 C spend_week(game.c:2010):換洲耗一週。Go 用 EndWeek 近似(需 rng,
-	// 換洲的增長生物 parity 非關鍵,seed 取 Week 衍生)。
-	s.gs.EndWeek(s.assets, kbrng.NewGlibc(uint32(s.gs.Week+1)))
+	// 對齊 C spend_week(play.c:524):換洲花掉本週剩餘天數推進到下一個週界,觸發一次週結算。
+	// seed 取 PassedDays 衍生(增長生物 parity 非關鍵)。
+	creature := s.gs.SpendWeek(s.assets, kbrng.NewGlibc(uint32(s.gs.PassedDays()+1)))
+	if s.gs.DaysLeft <= 0 {
+		return Replace(NewLoseScreen(s.gs, s.assets)) // 時間耗盡
+	}
+	if creature >= 0 {
+		// 用 Replace 換掉本換洲畫面 → 顯示週結算,關閉後回世界地圖。
+		return Replace(NewEndOfWeekScreen(s.gs, s.assets, creature, beforeGold))
+	}
 	return Pop()
 }
 

@@ -24,19 +24,28 @@ func TestNavigate_OnlyListsFoundContinents(t *testing.T) {
 	}
 }
 
-// TestNavigate_SailToMovesAndSpendsWeek 驗證選洲後 SailTo(移到入口)+ 消耗一週 + Pop。
+// TestNavigate_SailToMovesAndSpendsWeek 驗證選洲後 SailTo(移到入口)+ 消耗一週(推進天數 +
+// 觸發週結算畫面)。換洲會跨一個週界 → Replace 成 EndOfWeekScreen(關閉後回地圖)。
 func TestNavigate_SailToMovesAndSpendsWeek(t *testing.T) {
 	a := castleTestAssets(t)
 	gs := gamestate.NewGame(a, "Tester", 0, gamestate.DefaultWorldSeed)
 	gs.ContinentFound[2] = 1
 	weekBefore := gs.Week
+	daysBefore := gs.DaysLeft
 	entry := gamestate.ContinentEntry(a)
 
 	s := NewNavigateContinentScreen(gs, a)
 	// options[0]=洲0、options[1]=洲2;選第 2 項(按 '2')前往洲 2。
 	tr := s.Update(input.Letter('2'))
-	if tr.Kind != KindPop {
-		t.Fatalf("選洲後應 Pop 回地圖,got %v", tr.Kind)
+	if tr.Kind != KindReplace {
+		t.Fatalf("選洲後應 Replace 成週結算畫面,got %v", tr.Kind)
+	}
+	if _, ok := tr.Next.(*EndOfWeekScreen); !ok {
+		t.Fatalf("換洲週結算應 Replace 成 *EndOfWeekScreen,got %T", tr.Next)
+	}
+	// 換洲從本週剩餘天數推進到下一週界:起手 passed_days=0 → 花 WeekDays(5)天。
+	if gs.DaysLeft != daysBefore-gamestate.WeekDays {
+		t.Errorf("換洲應花本週剩餘天數:DaysLeft %d→%d(want -%d)", daysBefore, gs.DaysLeft, gamestate.WeekDays)
 	}
 	if gs.Continent != 2 {
 		t.Errorf("未切換到洲 2:Continent=%d", gs.Continent)

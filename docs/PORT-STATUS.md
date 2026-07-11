@@ -295,7 +295,16 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
 - ~~sidebar 拼圖 piece 疊圖~~ ✅ 完成(2026-07-11):`chrome.go drawPuzzlePieces`——側欄拼圖框
   (256,123,48,34)疊 5×5 `piece.png`(9×6,內縮 2px,對齊 C draw_sidebar game.c:1171),
   已尋神器/捕惡棍的格掀開(共用 `PuzzleOpened`,已測),隨破關逐格揭開;桌面截圖驗證滿格佈局。
-- 剩:end_week 完整化(次要)。
+- ~~end_week 完整化 / 精確 week_id~~ ✅ **完成(2026-07-11):整套天數/時間系統**
+  (`internal/gamestate/time.go`)。原本天數寫死 600、移動不扣天、無時限失敗、無週結算畫面
+  →現對齊 C:`DaySteps=40`/`WeekDays=5`/難度天數`{900,600,400,200}`;世界地圖移動耗一步
+  (停時優先)、步盡過一天(`EndDay`:天--/步重置/停時歸零)、每 5 天跨週界觸發 `EndWeek`
+  (世界增長)+ `EndOfWeekScreen`(兩頁:占星「第N週·本週為X之週·X據點補滿」+ 收支表);
+  `DaysLeft==0` → `LoseScreen`(時間耗盡失敗);狀態列顯示真實遞減天數;`WeekID()=passed_days/5`;
+  換洲改 `SpendWeek` 真推進天數。gs 加 DaysLeft/StepsLeft/Difficulty(固定 Normal)+ pending 暫存;
+  單元測試(time_test:過天/跨週/停時凍結/SpendWeek/歸零)+ 桌面截圖(週結算·失敗畫面,補「陷」缺字改「沒」)。
+  **opt_\* 遊戲選項旗標**(no_wages/foe_strength/days_x2 等)未做——C 自身亦標 P3「不接遊戲機制」,
+  需獨立的選項設定畫面 + 機制接線,非本輪範圍,誠實標為後續(非阻塞)。
 - 精確 week_id / opt_* gameplay 旗標、read_signpost 以外的細節音效/動畫。
 - RNG 逐 seed parity(演算法忠實,但未從第一個 rand() 起對齊 C,見 NewGame 註記)。
 - Android 模擬器整合驗收新系統(桌面 ffmpeg 已驗關鍵畫面)。

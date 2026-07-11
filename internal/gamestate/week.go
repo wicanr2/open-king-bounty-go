@@ -16,8 +16,9 @@ const maxTroops = 25
 //   - 若本週生物為農夫:帶 ABIL_ABSORB 的兵(鬼)化為農夫
 // 回傳本週選中的生物 id。
 //
-// ⚠ 暫緩(需世界狀態,後續切片):巢穴/城堡/foe 的增兵、城堡再佈署、船隻維護費、
-// 以及精確的 week_id(C 用 passed_days/WEEK_DAYS;這裡用 Week 計數近似)。
+// 巢穴/城堡/foe 的增兵、城堡再佈署已在 weeklyWorldGrowth 完成。EndWeek 由時間系統
+// (time.go:SpendStep→EndDay 跨週界、SpendWeek 換洲)每個週界呼叫一次,gs.Week 隨之 +1
+// 且與 day-based 的 WeekID()(passed_days/WEEK_DAYS)一致;週結算畫面 EndOfWeekScreen 顯示。
 // rng 由呼叫端注入(kbrng),parity 測試才能對 seed。
 func (gs *GameState) EndWeek(a *kbdata.Assets, rng kbrng.Rand) int {
 	// 停時歸零(對齊 C end_week 開頭 game->time_stop = 0)

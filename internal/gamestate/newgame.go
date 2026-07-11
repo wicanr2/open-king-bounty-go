@@ -54,11 +54,17 @@ const DefaultWorldSeed uint32 = 1
 // 逐句忠實對齊 C,行為性質一致,只是尚未從第一個 rand() 呼叫起就逐值對齊。
 func NewGame(a *kbdata.Assets, name string, class int, seed uint32) *GameState {
 	gs := &GameState{
-		Name:  name,
-		Class: class,
-		Rank:  0,
-		Gold:  a.StartGold[class],
+		Name:       name,
+		Class:      class,
+		Rank:       0,
+		Gold:       a.StartGold[class],
+		Difficulty: 1, // Normal(目前無難度選擇畫面,固定 600 天;對齊 C 預設)
 	}
+
+	// 時間系統起手(對齊 C spawn_game play.c:398-399):天數依難度、步數滿格。
+	gs.DaysLeft = gs.MaxDays()
+	gs.StepsLeft = DaySteps
+	gs.PendingWeekCreature = -1
 
 	// 套用 rank 0 增量(base 從 0 起),再讓當前可用領導力對齊 base。
 	gs.acceptRank(a)
