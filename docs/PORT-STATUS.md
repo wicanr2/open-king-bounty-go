@@ -342,6 +342,11 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
       主題切換(主題鈕 DOS→Genesis→Amiga→free)→ 作弊選單(+套用 +5000 金幣)→ 權杖拼圖 →
       戰鬥(走進敵人)→ 戰鬥施法(施法→火球術→選敵→施放)。錄製過程順帶修好 拼圖 觸控不可達
       (commit 82c462b)。demo 用 mobile.go demoWorldMap 已 revert(未 commit)。
+      **配樂**:adb screenrecord 不錄音,後製用 ffmpeg 混入 FM Towns 標題主題(`kb02.ogg`,首尾淡入淡出);
+      版權音樂、個人 promo 用勿公開散布。
+- [ ] **音訊 / 音樂移植**(Go 版尚未做):C 版有 bgm.c(SDL2_mixer,場景循環 OGG,F9 切換);Go/Ebiten
+      移植目前**無音訊**(F9 ActMusicToggle 僅 stub,同主題切換當初)。可用 ebiten/audio 播 OGG +
+      場景對照(參 C `music/fmtowns/scenes.ini`)。影片配樂是後製混入、非遊戲內發聲。
 - [x] **Genesis 主題抽取**——✅ 完成(2026-07-10):`scripts/extract-genesis-theme.sh`(md-rom.c
       MD_Resolve dumper,SDL2 + env hook stub)→ `data/genesis/`(44 張:tileset+25 兵種+17 惡棍)。
       桌面 Xvfb 驗證世界地圖 + 戰鬥 Genesis 美術正確、兵種白底去背正確。UI/portrait/logo → free 補
