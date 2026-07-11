@@ -8,9 +8,11 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 
 > **現況摘要(2026-07-11)**:核心 + 進階系統全數移植,**遊戲可從新遊戲玩到通關**;含完整
 > 天數/時間系統(移動耗天·週結算·時限失敗)、opt_* 六項遊戲調整選項、圍攻城牆佈局、破關過場動畫。
-> **剩餘皆屬非阻塞細節**:RNG 逐 seed parity(演算法忠實,未從第一個 rand 對齊)、原生 Genesis ROM
-> 即時抽取(設計上以預抽 PNG 取代,見 Genesis 小節)。以下清單經 2026-07-11 逐條對碼查證清理;
-> 若某小節與本摘要或程式碼牴觸,以**程式碼**為準。
+> **剩餘兩項皆非「未完成工作」而是刻意的設計決策/已驗證狀態**(見文末各小節的完整定性):
+> ① RNG 逐 seed 世界 parity——RNG 原語已對 C oracle bit-parity、演算法忠實,world 級 parity 因「持久化整份
+> 世界狀態(非 seed 重播)+ 無 world-oracle 可驗 + reorder 純風險零收益」刻意不追;② 原生 Genesis ROM 即時
+> 抽取——因版權 ROM 不能內含於 APK,一律走「使用者自備 → 預抽 PNG」模式(與 DOS/Amiga 同)。
+> 以下清單經 2026-07-11 逐條對碼查證清理;若某小節與本摘要或程式碼牴觸,以**程式碼**為準。
 
 ## ✅ 已完成
 
@@ -318,7 +320,15 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
   days_x2→切換即時加倍天數、ai_mode→combat `AIEvolved`(移植 `AIPickTargetEvolved`+`aiUnitThinkEvolved`,
   對齊 C ai_unit_think_evolved)。單元測試(options_test + ai_evolved_test)+ 桌面截圖(選項畫面 6 項)。
 - read_signpost 以外的細節音效/動畫。
-- RNG 逐 seed parity(演算法忠實,但未從第一個 rand() 起對齊 C,見 NewGame 註記)。
+- **RNG 逐 seed 世界 parity —— 刻意不追(非缺陷,已充分定性)**:
+  - **RNG 原語已 bit-parity**:`internal/kbrng/oracle_test.go` 讀 C `KB_ORACLE=1 KB_ORACLE_SEED=1` 印出的
+    `golden_seed1.json`(KB_rand(0,99) 序列),Go 的 glibc rand 重現逐一相符。建角/deal_damage 亦有黃金樣本。
+  - **world-gen 演算法忠實**:salt_spells/salt_continent/salt_villains/repopulate_* 皆逐句對照 C 移植。
+  - **殘留 = 呼叫「順序」不同**:C spawn_game 先藏權杖(3 個 KB_rand,play.c:386-388)再 salt;Go NewGame 順序不同,
+    故同 seed 生成的世界與 C 不同。**為何不追**:① C 的 KB_ORACLE 只 dump rand/建角/deal_damage,**不 dump 生成後
+    的世界**,沒有 world-oracle 可驗證 world 級 parity;② 本移植**持久化整份世界狀態(非 seed 重播)**,parity 對
+    玩法/存檔零影響;③ 要對齊需 reorder NewGame(改動生成世界)→ 破既有 worldgen 測試,純風險零收益。
+    若日後真需要:先擴 C KB_ORACLE dump 完整世界 → 建 golden → reorder + 逐欄比對。
 - Android 模擬器整合驗收新系統(桌面 ffmpeg 已驗關鍵畫面)。
 
 > 每項:以 C 源為規格 → 桌面 debug flag 截圖對齊 → gamestate 邏輯旗艦自己做、
@@ -356,7 +366,11 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
       (ActThemeCycle,觸控無 F8)。桌面 Xvfb + **Android 模擬器實機**驗證:APK 開機為 DOS 版
       NWC logo(DOS 預設 embed),點「主題」鈕 swipe-hold 循環 DOS→Amiga→free(genesis 缺席跳過),
       主題/作弊鈕與新 atlas 字集均正確渲染。
-- [x] **Genesis 主題**:✅ 素材已抽(`scripts/extract-genesis-theme.sh` → `data/genesis/`)、切換可用、Android 模擬器已驗(城堡/世界地圖 Genesis 正確渲染)。⚠ 僅「依原生 `kb.bin` ROM 即時動態抽取」這條特殊管線未做(現況是預先跑腳本匯出成靜態圖檔;C 版該管線本身也僅 troop/villain/world,其餘回退 free),非阻塞。
+- [x] **Genesis 主題**:✅ 素材已抽(`scripts/extract-genesis-theme.sh` → `data/genesis/`)、切換可用、Android 模擬器已驗(城堡/世界地圖 Genesis 正確渲染)。
+  **「原生 `kb.bin` ROM 即時抽取」= 刻意不做(設計決策,非缺陷)**:① kb.bin 是**他人著作權 ROM**,不能內含於對外
+  APK,執行期讀 ROM 與「Android 可出貨」模型直接衝突;② 本移植對**所有版權主題**(DOS/Amiga/Genesis)一律走同一
+  正確模式——使用者自備版權來源 → 跑 extract 腳本 → 產出 gitignore 的 PNG(free 開放美術才入庫),Genesis 並非特例;
+  ③ md-rom.c(450 行 LZSS+MD tile/palette 解碼)即使移植,對已出貨 APK 也零幫助(仍需 ROM 在場)。故維持預抽 PNG。
 - [x] **切換 toast 提示**——✅ 完成(2026-07-11,`internal/app/toast.go`):切主題/音樂顯示置中金框提示。
 - [x] **主題設定持久化**——✅ 完成(2026-07-11):`internal/save/settings.go`(openkb/settings.json,
       與存檔同 base)+ loadart.go(`CycleTheme` 寫偏好、`InitThemes` 起始套用 `themeStartIndex`);
