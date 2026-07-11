@@ -85,6 +85,15 @@ var logoArt *ebiten.Image
 // SetLogoArt 由進入點在載入資產後設定商標圖。
 func SetLogoArt(img *ebiten.Image) { logoArt = img }
 
+// frameArt 是「金框」邊框圖(frame.png,320×200,play area 透明 + 四周金色浮雕邊,
+// 對齊 C 版 DOS UI 金框浮雕:黑外緣→暗金→亮金→深藍內線)。由 drawChromeFrame 疊在
+// play area 外圈,取代舊的平面金框帶。版權主題(DOS)才內建;free/公開版無此檔 →
+// frameArt==nil → drawChromeFrame 退回平面金框帶。
+var frameArt *ebiten.Image
+
+// SetFrameArt 由載入器設定金框圖(nil = 該主題無 frame.png,退回平面框)。
+func SetFrameArt(img *ebiten.Image) { frameArt = img }
+
 // portraitArt 是四職業班底立繪(GR_PORTRAIT,knig/pala/sorc/barb.png,96×102,
 // 不去背),索引直接對齊 C DOS_class_names[class] 與 GameState.Class 同一欄位
 // (free-data.c:982 case GR_PORTRAIT 用 game->class 原樣當 sub_id,charselect.go

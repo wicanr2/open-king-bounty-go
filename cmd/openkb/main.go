@@ -44,6 +44,7 @@ var (
 	worldSeed         = flag.Uint("seed", uint(gamestate.DefaultWorldSeed), "debug:配合 -starttown/-startclass,指定 salt_spells 等世界生成用的 RNG seed")
 	shotPath          = flag.String("shot", "", "debug:在第 -shotframe 幀把畫面存成此 PNG 後結束(截圖驗證用)")
 	shotFrame         = flag.Int("shotframe", 3, "debug:配合 -shot,第幾幀截圖(預設 3,讓首幀狀態穩定)")
+	forceTouch        = flag.Bool("touch", false, "debug:桌面也繪製觸控控制疊層(供按鈕 UX 設計/截圖驗證用)")
 )
 
 func rootScreen(a *kbdata.Assets) screen.Screen {
@@ -173,7 +174,7 @@ func main() {
 
 	ebiten.SetWindowSize(app.LogicalW*3, app.LogicalH*3)
 	ebiten.SetWindowTitle("御封戰將 (openkb-go)")
-	if err := ebiten.RunGame(app.New(rootScreen(assets), assets, nil, false)); err != nil {
+	if err := ebiten.RunGame(app.New(rootScreen(assets), assets, nil, *forceTouch)); err != nil {
 		log.Fatal(err)
 	}
 }

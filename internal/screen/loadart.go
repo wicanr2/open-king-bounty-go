@@ -40,6 +40,7 @@ const baseTheme = "free"
 // free 的那件,避免切換後殘留前一主題或空白。dir=="free" 時只鋪一次。
 // 桌面傳 os.DirFS(datadir),行動傳 embed.FS。必須在遊戲迴圈啟動後(繪圖就緒)呼叫。
 func LoadArt(fsys fs.FS, dir string) {
+	SetFrameArt(nil) // 重置:frame.png 只有版權主題(DOS)有,切到無此檔的主題要清掉殘留
 	loadArtDir(fsys, baseTheme)
 	if dir != baseTheme {
 		loadArtDir(fsys, dir)
@@ -85,6 +86,10 @@ func loadArtDir(fsys fs.FS, dir string) {
 		SetLogoArt(art)
 	} else {
 		log.Printf("load logo art [%s]: %v", dir, err)
+	}
+	// 金框邊框圖(只有版權主題有;缺就維持 nil，drawChromeFrame 退回平面框，不 log 噪音)
+	if art, err := render.LoadPNGTileFS(fsys, p+"frame.png"); err == nil {
+		SetFrameArt(art)
 	}
 	if comtiles, err := render.LoadSpriteOpaqueFS(fsys, p+"comtiles.png", 48, 34); err == nil {
 		SetComtiles(comtiles)

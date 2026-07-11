@@ -141,6 +141,13 @@ const chromeContentB = bottomBorderY + bottomBorderH // 192
 // 而非舊版誤把整片填黃(見 worldmap.go colorBorder 註解)。
 func drawChromeFrame(dst *ebiten.Image) {
 	dst.Fill(colorOuter)
+	// 有 C 版金框圖(frame.png)就直接貼——play area 透明、四周金色浮雕邊(黑外緣→
+	// 暗金→亮金→深藍內線),忠實還原 C DOS 金框;各 chrome 畫面共用同一張、內容隨後
+	// 蓋掉透明中心。無 frame.png(free/公開版)則退回平面金框帶。
+	if frameArt != nil {
+		render.DrawTile(dst, frameArt, 0, 0)
+		return
+	}
 	vector.DrawFilledRect(dst,
 		float32(worldContentL-worldFrameBand), float32(worldContentT-worldFrameBand),
 		float32(worldContentR-worldContentL+2*worldFrameBand),
