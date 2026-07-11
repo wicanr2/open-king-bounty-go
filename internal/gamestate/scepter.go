@@ -26,12 +26,15 @@ func (gs *GameState) grassOnContinent(continent int) int {
 	return n
 }
 
-// PlaceScepter 對齊 C spawn_game 的權杖埋藏(play.c:387-389)+ bury_scepter(148):
-// 隨機選一洲(rand(100,400)/100-1 = 0-3)、在該洲隨機一片草地埋下權杖。
+// PlaceScepter 對齊 C spawn_game 的權杖埋藏(play.c:386-389)+ bury_scepter(148),
+// 消耗序列與 C 完全一致:先 scepter_key = KB_rand(0x00,0xFF)、再 scepter_continent =
+// KB_rand(100,400)/100-1(=0-3)、最後在該洲第 KB_rand(0, grass-1) 片草地埋下權杖。
 //
-// ⚠ parity 誠實(同 NewGame 註記):Go 未逐值重現 C spawn_game 從第一個 rand() 起的
-// 完整序列,故權杖埋點不保證與 C 同 seed 一致;但選洲/選草地的演算法忠實對齊。
+// 呼叫時機須對齊 C:memcpy 地圖後「立刻」埋(在 salt_spells/salt_continent 改動地圖前、
+// 於原始草地上),故 NewGame 在 copyWorldMap 之後、saltSpells 之前呼叫本函式——如此
+// 同一個 seed 在 C/Go 兩邊的 scepter 佈置與後續 rand 資料流即逐值對齊。
 func (gs *GameState) PlaceScepter(rng kbrng.Rand) {
+	gs.ScepterKey = byte(rng.Between(0x00, 0xFF))
 	gs.ScepterContinent = rng.Between(100, 400)/100 - 1
 	if gs.ScepterContinent < 0 || gs.ScepterContinent >= kbdata.MaxContinents {
 		gs.ScepterContinent = 0

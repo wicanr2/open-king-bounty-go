@@ -62,6 +62,10 @@ type GameState struct {
 	ScepterContinent int
 	ScepterX         int
 	ScepterY         int
+	// ScepterKey 對應 C game->scepter_key:spawn_game 第一個 rand(KB_rand(0x00,0xFF)),
+	// C 版拿它當存檔時 XOR 混淆權杖座標的鍵(save.c:248-251)。本移植用 JSON 存檔不需
+	// 混淆,但仍忠實消耗這一次 rand 以對齊 C spawn_game 的 rand 資料流順序。
+	ScepterKey byte
 
 	// TimeStop = 停時術剩餘回合數(對應 C game->time_stop):>0 時世界地圖走路不耗天數
 	// (見 worldmap 移動)、戰鬥中敵方跳過。由 SPELL_TIMESTOP 施放累加(spell_power*10)。

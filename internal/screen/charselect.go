@@ -65,9 +65,10 @@ func (s *CharSelectScreen) Update(a input.Action) Transition {
 	return Stay()
 }
 
-// start 用選定職業建角,進世界地圖。
+// start 用選定職業建角,進世界地圖。用 RandomWorldSeed() 讓每局的權杖位置 / 敵人
+// 佈置 / 城鎮法術都不同(還原原版「每局隨機、有重玩價值」;見 gamestate/seed.go)。
 func (s *CharSelectScreen) start(class int) Transition {
-	gs := gamestate.NewGame(s.assets, "Sir Loin", class, gamestate.DefaultWorldSeed)
+	gs := gamestate.NewGame(s.assets, "Sir Loin", class, gamestate.RandomWorldSeed())
 	return Replace(NewWorldMapScreen(gs, s.assets))
 }
 

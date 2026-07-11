@@ -8,10 +8,14 @@ Android 觸控 + CJK 雙層更銳利。C 版為行為真值 oracle,以 C 源碼�
 
 > **現況摘要(2026-07-11)**:核心 + 進階系統全數移植,**遊戲可從新遊戲玩到通關**;含完整
 > 天數/時間系統(移動耗天·週結算·時限失敗)、opt_* 六項遊戲調整選項、圍攻城牆佈局、破關過場動畫。
-> **剩餘兩項皆非「未完成工作」而是刻意的設計決策/已驗證狀態**(見文末各小節的完整定性):
-> ① RNG 逐 seed 世界 parity——RNG 原語已對 C oracle bit-parity、演算法忠實,world 級 parity 因「持久化整份
-> 世界狀態(非 seed 重播)+ 無 world-oracle 可驗 + reorder 純風險零收益」刻意不追;② 原生 Genesis ROM 即時
-> 抽取——因版權 ROM 不能內含於 APK,一律走「使用者自備 → 預抽 PNG」模式(與 DOS/Amiga 同)。
+> **原本列為「刻意不追」的兩項,已依需求補完**:
+> ① RNG 逐 seed 世界 parity——NewGame 已把 rand 消耗序列**逐值對齊 C spawn_game**
+> (scepter_key→continent→grass→salt_spells→salt_continent→salt_villains),且正式新遊戲入口
+> (charselect)改用 `RandomWorldSeed()` 時間種子 → **每局權杖位置/敵人佈置/城鎮法術都不同**,
+> 還原 1990 原版「每局隨機、有重玩價值」(openkb 重製版省略 srand 導致每局相同,本移植補回);
+> ② 版權主題本機打包——DOS/Genesis/Amiga 三主題皆已預抽 PNG 並 `//go:embed all:data` 打包進 APK,
+> Android **local 打包允許納入版權主題**(使用者授權),Genesis 抽盡 ROM 能給的(tile/troop/villain,
+> md-rom.c 僅支援這三類),其餘 UI/立繪由 free 底層 best-effort 補上。
 > 以下清單經 2026-07-11 逐條對碼查證清理;若某小節與本摘要或程式碼牴觸,以**程式碼**為準。
 
 ## ✅ 已完成
@@ -108,9 +112,10 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
   NavmapCoords/TelecaveCoords(gamestate.go),全部 exported,隨 GameState 一起被
   encoding/json 存讀檔完整持久化——**未擴充存檔格式**(當初計畫的「存 seed 重跑 salt」方案
   最終改採「直接持久化整份世界狀態」,更簡單且不必擔心 RNG parity 隨版本改動而讓存檔重播出不同世界)。
-- **NewGame 呼叫**:`salt_spells` 之後、`for cont := range 4 { gs.saltContinent(a, rng, cont, 2,1,1,2,10,5) }`
-  ——沿用同一個 kbrng 實例延續消耗(RNG parity 誠實註記見 newgame.go/worldgen.go 內文,尚未逐一
-  對齊 spawn_game 完整 rand 呼叫序列)。
+- **NewGame 呼叫序**:`PlaceScepter`(scepter_key/continent/grass 3 次 rand,原始地圖上)→ `salt_spells`
+  → `for cont := range 4 { gs.saltContinent(a, rng, cont, 2,1,1,2,10,5) }` → `salt_villains`×4 →
+  `repopulate_castle`——同一個 kbrng 實例延續消耗,**逐值對齊 C spawn_game 完整 rand 呼叫序列**
+  (2026-07-11 補齊,詳見 newgame.go/scepter.go 內文)。
 - **驗收**:單元測試(gamestate/worldgen_test.go)+ 桌面截圖(Xvfb + xdotool 實際走位,
   踩進真實生成的地下城棲地,recruit 畫面顯示「骷髏兵/150隻/造價40」,與程式化 dump 逐字對上)。
 
@@ -158,10 +163,10 @@ recruit 的兵種/庫存、worldmap 的 foe/dwelling 已改讀 salt_continent �
 - **世界狀態欄位**:CastleOwner/CastleTroops/CastleNumbers、Contract/LastContract/
   MaxContract/ContractCycle(gamestate.go),全部 exported,隨 GameState 一起被
   encoding/json 存讀檔完整持久化,未擴充存檔格式。
-- **RNG parity 誠實註記**:與 salt_continent 同一個 kbrng 實例延續消耗,但 C 版
-  spawn_game 在 salt_continent 之前已先呼叫 scepter 相關 rand(藏權杖鑰匙/選洲/選格),
-  Go 版尚未移植這段,故兩邊 rand 呼叫序列從最開頭就已分岔,「同 seed 逐值對齊」
-  仍不保證;salt_villains/repopulate_castle 演算法本身逐句忠實對齊 C。
+- **RNG parity**:與 salt_continent 同一個 kbrng 實例延續消耗;C spawn_game 在
+  salt_continent 之前先呼叫的 scepter rand(藏權杖鑰匙/選洲/選格)Go 版已於
+  `PlaceScepter` 補齊並置於序列最前,故兩邊 rand 呼叫序列**從最開頭即逐值對齊**
+  (2026-07-11);salt_villains/repopulate_castle 演算法本身亦逐句忠實對齊 C。
 - **驗收**:單元測試(gamestate/castle_test.go、castlegen_test.go、
   castlegen_newgame_test.go)涵蓋:castles.ini 真值核對(含缺檔 best-effort)、
   num_castles 洲別分佈(9/7/6/4)、saltVillains 直接演算法(4 個 seed,逐洲惡棍數 +
@@ -320,15 +325,18 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
   days_x2→切換即時加倍天數、ai_mode→combat `AIEvolved`(移植 `AIPickTargetEvolved`+`aiUnitThinkEvolved`,
   對齊 C ai_unit_think_evolved)。單元測試(options_test + ai_evolved_test)+ 桌面截圖(選項畫面 6 項)。
 - read_signpost 以外的細節音效/動畫。
-- **RNG 逐 seed 世界 parity —— 刻意不追(非缺陷,已充分定性)**:
+- **RNG 逐 seed 世界 parity + 每局隨機 —— ✅ 完成(2026-07-11)**:
   - **RNG 原語已 bit-parity**:`internal/kbrng/oracle_test.go` 讀 C `KB_ORACLE=1 KB_ORACLE_SEED=1` 印出的
     `golden_seed1.json`(KB_rand(0,99) 序列),Go 的 glibc rand 重現逐一相符。建角/deal_damage 亦有黃金樣本。
   - **world-gen 演算法忠實**:salt_spells/salt_continent/salt_villains/repopulate_* 皆逐句對照 C 移植。
-  - **殘留 = 呼叫「順序」不同**:C spawn_game 先藏權杖(3 個 KB_rand,play.c:386-388)再 salt;Go NewGame 順序不同,
-    故同 seed 生成的世界與 C 不同。**為何不追**:① C 的 KB_ORACLE 只 dump rand/建角/deal_damage,**不 dump 生成後
-    的世界**,沒有 world-oracle 可驗證 world 級 parity;② 本移植**持久化整份世界狀態(非 seed 重播)**,parity 對
-    玩法/存檔零影響;③ 要對齊需 reorder NewGame(改動生成世界)→ 破既有 worldgen 測試,純風險零收益。
-    若日後真需要:先擴 C KB_ORACLE dump 完整世界 → 建 golden → reorder + 逐欄比對。
+  - **呼叫順序已對齊**:`PlaceScepter` 移到 NewGame 最前(scepter_key→continent→grass 3 次 rand,於原始
+    地圖上),補回 C 省略前置的 scepter rand,故 NewGame 的 rand 消耗序列**從最開頭即逐值對齊
+    C spawn_game**(scepter→salt_spells→salt_continent×4→salt_villains×4→repopulate_castle)。
+  - **每局隨機(replayability)**:正式新遊戲入口 charselect 改用 `RandomWorldSeed()`(時間種子),
+    每局權杖位置/敵人佈置/城鎮法術都不同——還原 1990 原版(openkb 重製版省略 srand → 每局相同,本移植
+    補回真正的新遊戲入口)。測試 `TestPlaceScepter_VariesBySeed`/`TestNewGame_WorldVariesBySeed` 鎖定「不同
+    seed→不同世界」,`TestPlaceScepter_Deterministic` 鎖定「同 seed→可重現」。世界在 NewGame 當下完全物化
+    並存進 GameState,存讀檔沿用,故 seed 不需另外持久化。debug/測試仍走固定 `DefaultWorldSeed`。
 - Android 模擬器整合驗收新系統(桌面 ffmpeg 已驗關鍵畫面)。
 
 > 每項:以 C 源為規格 → 桌面 debug flag 截圖對齊 → gamestate 邏輯旗艦自己做、
@@ -366,11 +374,14 @@ foe 戰鬥含奪城履約 / 寶箱含海圖解鎖洲 / 傳送洞 / 路標 / 解�
       (ActThemeCycle,觸控無 F8)。桌面 Xvfb + **Android 模擬器實機**驗證:APK 開機為 DOS 版
       NWC logo(DOS 預設 embed),點「主題」鈕 swipe-hold 循環 DOS→Amiga→free(genesis 缺席跳過),
       主題/作弊鈕與新 atlas 字集均正確渲染。
-- [x] **Genesis 主題**:✅ 素材已抽(`scripts/extract-genesis-theme.sh` → `data/genesis/`)、切換可用、Android 模擬器已驗(城堡/世界地圖 Genesis 正確渲染)。
-  **「原生 `kb.bin` ROM 即時抽取」= 刻意不做(設計決策,非缺陷)**:① kb.bin 是**他人著作權 ROM**,不能內含於對外
-  APK,執行期讀 ROM 與「Android 可出貨」模型直接衝突;② 本移植對**所有版權主題**(DOS/Amiga/Genesis)一律走同一
-  正確模式——使用者自備版權來源 → 跑 extract 腳本 → 產出 gitignore 的 PNG(free 開放美術才入庫),Genesis 並非特例;
-  ③ md-rom.c(450 行 LZSS+MD tile/palette 解碼)即使移植,對已出貨 APK 也零幫助(仍需 ROM 在場)。故維持預抽 PNG。
+- [x] **Genesis 主題(本機打包)**:✅ 完成——素材已抽(`scripts/extract-genesis-theme.sh` → `data/genesis/`,
+  45 png:tileset + 全兵種 + 全惡棍)、`//go:embed all:data` 打包進本機 APK、切換可用、Android 模擬器已驗
+  (城堡/世界地圖 Genesis 正確渲染)。**使用者授權:Android local 打包允許納入版權主題**(DOS/Genesis/Amiga
+  三主題皆隨本機 build 內嵌;公開 repo 仍 gitignore,只帶 free)。
+  **關於「原生 `kb.bin` ROM 即時抽取」**:改採預抽 PNG 內嵌,不做執行期 ROM 解碼——因 ① md-rom.c 對 Genesis
+  也只能抽 tile/troop/villain(不支援 portrait/select/title/location,故 Genesis 缺的 UI/立繪本就無從抽,
+  由 free 底層 best-effort 補上,非缺件);② 預抽 PNG 內嵌與「執行期讀 ROM」對玩家視覺結果等價,卻不需 ROM
+  在裝置在場;③ md-rom.c(450 行 LZSS+MD 解碼)移植對已內嵌 PNG 的 APK 零額外收益。故維持預抽內嵌。
 - [x] **切換 toast 提示**——✅ 完成(2026-07-11,`internal/app/toast.go`):切主題/音樂顯示置中金框提示。
 - [x] **主題設定持久化**——✅ 完成(2026-07-11):`internal/save/settings.go`(openkb/settings.json,
       與存檔同 base)+ loadart.go(`CycleTheme` 寫偏好、`InitThemes` 起始套用 `themeStartIndex`);

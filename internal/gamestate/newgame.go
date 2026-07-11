@@ -8,20 +8,21 @@ import (
 // emptySquad 是 C 版 0xFF 空格慣例(troop id = 255,count = 0)。
 const emptySquad = 255
 
-// DefaultWorldSeed 是尚未接上「per-playthrough 持久世界種子」前的預設 rand seed。
+// DefaultWorldSeed 是「可重現世界」的固定 rand seed,供測試 / debug 啟動旗標用
+// (cmd/openkb 的 -seed 預設值、單元測試固定期望值)。正式新遊戲入口不用它——
+// charselect 改用 RandomWorldSeed() 讓每局世界都不同(見下方溯源說明)。
 //
-// 誠實記錄一個逆向溯源結果:C 版原始碼(src/main.c、src/game.c 正常「開新遊戲」
-// 路徑)**沒有任何 srand(time(NULL)) 呼叫** —— 全域搜尋 `srand(` 只在 game.c 命中
-// 三處:debug 主控台 'r' 鍵手動重新播種、以及 KB_ORACLE 產golden sample 前顯式
-// srand(oseed)(oseed 未指定時預設 1,見 game.c:7142)。也就是說,C 版玩家若從
-// 不使用 debug 主控台重新播種,同一份執行檔每次「開新遊戲」的 world_spell/
-// 地圖生成序列理論上完全相同(glibc rand() 未播種時的行為等同 srand(1),POSIX
-// 規範明文如此)。
+// 逆向溯源:C 版原始碼(src/main.c、src/game.c 正常「開新遊戲」路徑)沒有任何
+// srand(time(NULL)) —— 全域 `srand(` 只命中三處:debug 主控台 'r' 鍵手動播種、
+// 以及 KB_ORACLE 產 golden sample 前顯式 srand(oseed)(預設 1,game.c:7142)。
+// 也就是說 openkb 這個重製版每次「開新遊戲」的世界理論上完全相同(glibc rand()
+// 未播種等同 srand(1),POSIX 明文)——這是 openkb 為求確定性/測試的取捨,偏離
+// 1990 原版 King's Bounty(原版以系統計時器播種,每局世界不同)。
 //
-// 因此這裡選 1 當預設值,不是隨便挑的數字,也不是我方自創的「加時間戳讓每局
-// 不同」的新行為 —— 那樣反而是替 C 版本沒有的行為捏造一個。之後若要接上「每局
-// 世界都不同」的持久種子(連動 worldmap 的敵人佈置、地圖生成等尚未建模的世界
-// RNG),應該是另一個明確任務,牽動的不只 town_spell 一處。
+// 玩家要的是原版那種「每局不同、有重玩價值」的體驗,故正式入口改用時間種子
+// (RandomWorldSeed);演算法本身逐句對齊 C spawn_game,只是把 C 省略的
+// srand 補回真正的新遊戲入口。世界在 NewGame 當下即完全物化並存進 GameState
+// (WorldMap/ScepterX,Y/TownSpell…),存讀檔沿用,故 seed 不需另外持久化。
 const DefaultWorldSeed uint32 = 1
 
 // NewGame 建立角色起手狀態,對應 C 版 src/play.c 的 spawn_game。
@@ -35,23 +36,19 @@ const DefaultWorldSeed uint32 = 1
 // KnowsMagic(與升階共用同一條路徑);Leadership 起手 = BaseLeadership。
 //   - Gold                = starting_gold[class]
 //   - player_troops/numbers[0..1] = starting_army_troop/numbers[class];[2..4] = 0xFF/0
+//   - PlaceScepter(rng)    先跑(對齊 C spawn_game memcpy 後「立刻」埋權杖),於
+//     salt_continent 改動地圖前於原始草地上放置;消耗 scepter_key/continent/grass
+//     三次 rand。
 //   - TownSpell            = salt_spells(rng),接著 WorldMap/Dwelling*/Foe* 等 =
-//     salt_continent(rng) 逐洲跑(對齊 C spawn_game 呼叫順序:salt_spells 之後、
-//     salt_villains 之前),rng 為同一個 kbrng 實例延續消耗(對齊 C 同一個 rand()
-//     資料流,見下方 parity 誠實註記)。
+//     salt_continent(rng) 逐洲跑,rng 為同一個 kbrng 實例延續消耗(對齊 C 同一個
+//     rand() 資料流)。
 //
-// world seed / RNG parity 誠實註記(同 townspell.go 的 saltSpells 註記,範圍擴大到
-// 世界生成 + 城堡/惡棍):C 版 spawn_game 是一長串固定順序的 rand() 呼叫(角色起手
-// 不耗用 rand、salt_spells 耗用一段、salt_continent 每洲各耗用一段、salt_villains/
-// repopulate_castle 接續耗用)。本移植目前重現到 salt_spells → salt_continent(四洲)
-// → salt_villains(四洲)→ repopulate_castle 這段呼叫序列,但**在此之前** C 版
-// spawn_game 已先呼叫過 scepter 相關的 rand(KB_rand(0x00,0xFF) 藏權杖鑰匙、
-// KB_rand(100,400) 選洲、grass_on_continent 後再 KB_rand 選格子埋權杖)——Go 版
-// NewGame 尚未移植這段 scepter 佈置,兩邊的 rand 呼叫序列在最開頭就已分岔,故
-// 「同一個 seed 在 C/Go 兩邊得到完全相同的世界佈置」仍不保證逐 seed 對齊。
-// salt_continent/populate_dwelling/repopulate_foe/roll_creature/salt_villains/
-// repopulate_castle 演算法本身(放置規則、roll 範圍與型別、population 計算)
-// 逐句忠實對齊 C,行為性質一致,只是尚未從第一個 rand() 呼叫起就逐值對齊。
+// RNG parity:rng 消耗順序逐值對齊 C spawn_game——
+//   scepter_key → scepter_continent → scepter_grass(PlaceScepter)
+//   → salt_spells → salt_continent(四洲)→ salt_villains(四洲)→ repopulate_castle。
+// 各子演算法(bury_scepter/salt_continent/populate_dwelling/repopulate_foe/
+// roll_creature/salt_villains/repopulate_castle)的放置規則、roll 範圍與型別、
+// population 計算逐句忠實對齊 C。故同一個 seed 在 C/Go 兩邊得到相同的世界佈置。
 func NewGame(a *kbdata.Assets, name string, class int, seed uint32) *GameState {
 	gs := &GameState{
 		Name:       name,
@@ -101,12 +98,21 @@ func NewGame(a *kbdata.Assets, name string, class int, seed uint32) *GameState {
 	}
 
 	rng := kbrng.NewGlibc(seed)
-	gs.TownSpell = saltSpells(rng)
 
-	// 世界生成:a.World 是 nil-safe 的(kbdata.Load("") 純邏輯測試不帶地圖檔時
-	// a.World == nil),沒有地圖就跳過,保持既有「缺資料不 panic」慣例。
+	// 埋藏失竊權杖(破關目標)。對齊 C spawn_game(play.c:386-389):memcpy 地圖後
+	// 「立刻」埋——在 salt_spells/salt_continent 消耗 rand、改動地圖之前,於原始草地
+	// 上放置(消耗 scepter_key/continent/grass 三次 rand)。a.World 為 nil 的純邏輯
+	// 測試沒有地圖就跳過(不消耗這三次 rand),保持既有「缺資料不 panic」慣例。
 	if a != nil && a.World != nil {
 		gs.WorldMap = copyWorldMap(a.World)
+		gs.PlaceScepter(rng)
+	}
+
+	// salt_spells:對齊 C spawn_game rand 順序(scepter 之後、salt_continent 之前)。
+	gs.TownSpell = saltSpells(rng)
+
+	// 世界生成(salt_continent 四洲):在原始地圖上放置棲地/敵人/神器等。
+	if gs.WorldMap != nil {
 		for cont := 0; cont < kbdata.MaxContinents; cont++ {
 			// 對齊 C spawn_game:`salt_continent(game, i, 2, 1, 1, 2, 10, 5);`
 			// (2 artifact / 1 navmap / 1 orb / 2 telecave / 10 dwelling / 5 friendly)。
@@ -138,12 +144,6 @@ func NewGame(a *kbdata.Assets, name string, class int, seed uint32) *GameState {
 				gs.repopulateCastle(rng, castles, i)
 			}
 		}
-	}
-
-	// 埋藏失竊權杖(破關目標,對齊 C spawn_game play.c:387-389)。放在世界生成之後
-	// (掃已就緒的 gs.WorldMap 找草地);⚠ parity 誠實見 PlaceScepter 註記。
-	if gs.WorldMap != nil {
-		gs.PlaceScepter(rng)
 	}
 
 	return gs

@@ -34,6 +34,37 @@ func TestPlaceScepter(t *testing.T) {
 	}
 }
 
+// TestPlaceScepter_VariesBySeed 驗證 replayability 契約:不同 seed 開局的權杖埋點
+// 不會全部相同(還原原版「每局世界隨機」)。正式入口 charselect 用 RandomWorldSeed(),
+// 這裡以一批固定 seed 代表不同開局,確認至少出現兩種相異埋點。
+func TestPlaceScepter_VariesBySeed(t *testing.T) {
+	a := loadAssetsT(t)
+	if NewGame(a, "T", 0, DefaultWorldSeed).WorldMap == nil {
+		t.Skip("land.org 未載入,略過")
+	}
+	type pos struct{ c, x, y int }
+	seen := map[pos]bool{}
+	for seed := uint32(1); seed <= 30; seed++ {
+		gs := NewGame(a, "T", 0, seed)
+		seen[pos{gs.ScepterContinent, gs.ScepterX, gs.ScepterY}] = true
+	}
+	if len(seen) < 2 {
+		t.Errorf("30 個不同 seed 只產生 %d 種權杖埋點,replayability 失效", len(seen))
+	}
+}
+
+// TestNewGame_WorldVariesBySeed 驗證整體世界(不只權杖)隨 seed 變化:town_spell
+// 分配在不同 seed 下不應全同。
+func TestNewGame_WorldVariesBySeed(t *testing.T) {
+	a := loadAssetsT(t)
+	g1 := NewGame(a, "T", 0, 1)
+	g2 := NewGame(a, "T", 0, 2)
+	if g1.TownSpell == g2.TownSpell && g1.ScepterX == g2.ScepterX &&
+		g1.ScepterY == g2.ScepterY && g1.ScepterContinent == g2.ScepterContinent {
+		t.Error("兩個不同 seed 的世界(town_spell + 權杖)完全相同,seed 未生效")
+	}
+}
+
 // TestPlaceScepter_Deterministic 驗證同 seed 埋點可重現(同一 rng 序列)。
 func TestPlaceScepter_Deterministic(t *testing.T) {
 	a := loadAssetsT(t)
