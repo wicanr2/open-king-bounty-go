@@ -9,6 +9,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/wicanr2/open-king-bounty-go/internal/app"
+	"github.com/wicanr2/open-king-bounty-go/internal/bgm"
 	"github.com/wicanr2/open-king-bounty-go/internal/gamestate"
 	"github.com/wicanr2/open-king-bounty-go/internal/kbdata"
 	"github.com/wicanr2/open-king-bounty-go/internal/screen"
@@ -163,6 +164,7 @@ func main() {
 	} else {
 		log.Printf("art theme: none found in %s", *datadir)
 	}
+	bgm.Init(os.DirFS(*datadir)) // BGM(data/music/scenes.ini;缺則靜音)
 
 	ebiten.SetWindowSize(app.LogicalW*3, app.LogicalH*3)
 	ebiten.SetWindowTitle("御封戰將 (openkb-go)")

@@ -16,6 +16,7 @@
 /internal/embedded/data/genesis/
 /internal/embedded/data/amiga/
 /internal/embedded/data/fmtowns/
+/internal/embedded/data/music/
 *.CC
 *.ROM
 *.rom

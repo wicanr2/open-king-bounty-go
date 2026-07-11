@@ -51,6 +51,7 @@ func (t TouchLayout) Controls() []Control {
 	cs = append(cs,
 		Control{Rect{292, 1, 26, 10}, Action{Kind: ActThemeCycle}, "主題", false},
 		Control{Rect{292, 12, 26, 10}, Action{Kind: ActCheat}, "作弊", false},
+		Control{Rect{292, 23, 26, 10}, Action{Kind: ActMusicToggle}, "音樂", false},
 	)
 
 	if t.km.Directions {

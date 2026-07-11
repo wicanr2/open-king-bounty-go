@@ -6,6 +6,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
+	"github.com/wicanr2/open-king-bounty-go/internal/bgm"
 	"github.com/wicanr2/open-king-bounty-go/internal/input"
 	"github.com/wicanr2/open-king-bounty-go/internal/kbdata"
 	"github.com/wicanr2/open-king-bounty-go/internal/render"
@@ -47,9 +48,7 @@ func (g *Game) Update() error {
 		if !g.handleSystem(a) {
 			g.mgr.Update(a)
 		}
-		return nil
-	}
-	if tx, ty, ok := pollTap(); ok {
+	} else if tx, ty, ok := pollTap(); ok {
 		// 觸控/滑鼠座標在輸出空間(960×600),換算回 320 邏輯供觸控佈局解析。
 		layout := input.NewTouchLayout(g.mgr.Keymap())
 		if a := layout.Resolve(input.Tap{X: tx / SCALE, Y: ty / SCALE}); !a.IsNone() {
@@ -58,15 +57,27 @@ func (g *Game) Update() error {
 			}
 		}
 	}
+	g.updateMusic()
 	return nil
 }
 
-// handleSystem 攔截跨畫面的系統動作(F8 切美術主題 / 觸控 ☰ 選項),消費掉就回 true,
-// 不再往下丟給當前畫面。對齊 C openkb「module 切換是全域快捷」的語意。
+// updateMusic 依當前畫面宣告的音樂場景切 BGM(未實作 bgm.Scener 的畫面沿用目前音樂)。
+// bgm.PlayScene 對「同場景 / 未 Init / 無音樂資料」皆 no-op,故每幀呼叫安全。
+func (g *Game) updateMusic() {
+	if s, ok := g.mgr.Current().(bgm.Scener); ok {
+		bgm.PlayScene(s.MusicScene())
+	}
+}
+
+// handleSystem 攔截跨畫面的系統動作(F8 切美術主題 / F9 切音樂 / 觸控鈕),消費掉就回 true,
+// 不再往下丟給當前畫面。對齊 C openkb「module/音樂 切換是全域快捷」的語意。
 func (g *Game) handleSystem(a input.Action) bool {
 	switch a.Kind {
 	case input.ActThemeCycle:
 		screen.CycleTheme()
+		return true
+	case input.ActMusicToggle:
+		bgm.Toggle()
 		return true
 	}
 	return false

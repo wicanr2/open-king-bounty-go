@@ -11,6 +11,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/mobile"
 
 	"github.com/wicanr2/open-king-bounty-go/internal/app"
+	"github.com/wicanr2/open-king-bounty-go/internal/bgm"
 	"github.com/wicanr2/open-king-bounty-go/internal/embedded"
 	"github.com/wicanr2/open-king-bounty-go/internal/kbdata"
 	"github.com/wicanr2/open-king-bounty-go/internal/screen"
@@ -34,6 +35,7 @@ func init() {
 		} else {
 			log.Printf("art theme: none found")
 		}
+		bgm.Init(embedded.FS()) // BGM(data/music/;缺則靜音)
 	}
 
 	// SetGame 讓 ebitenmobile 生成的 Java/Kotlin 綁定驅動這顆遊戲迴圈。
